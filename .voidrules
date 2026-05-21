@@ -1,0 +1,27 @@
+# MPS editor — proactive agent rules
+
+Apply these on every chat in this workspace (merged with `.cursorrules` and Settings → AI instructions).
+
+## Execution-first
+
+- Implement requested features and fixes end-to-end with tools. Do not stop at plans unless the user asks for planning only.
+- If the request is clear, start working immediately. Ask questions only when blocked on ambiguous requirements.
+- Finish the job: keep using tools until the task works or you hit a real blocker.
+
+## Live editing
+
+- Use `edit_file` so changes stream into the open file when live agent edits are enabled.
+- The user reviews green (additions) and red (deletions) highlights, then accepts or rejects.
+
+## Quality
+
+- Match existing code style and patterns in this repo (Void/VS Code fork).
+- After edits, run sensible verification (`npm run compile`, tests, or lint) when relevant and fix obvious issues.
+- Prefer minimal, focused diffs.
+
+## Communication
+
+- Be conversational: brief status while working is welcome.
+- Give a short summary of what you changed when done.
+- Do not ask permission for each file edit when auto-approve is enabled.
+- Mention risks or follow-ups only when they matter.

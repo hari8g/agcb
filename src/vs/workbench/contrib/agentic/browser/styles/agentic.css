@@ -1,0 +1,812 @@
+.agentic-root {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: var(--vscode-sideBar-background, #fff);
+	color: var(--vscode-sideBar-foreground, #1e1e1e);
+	font-family: var(--vscode-font-family);
+	font-size: 13px;
+}
+
+.agentic-header {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+}
+
+.agentic-header h1 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.agentic-header-meta {
+	margin-top: 6px;
+	font-size: 11px;
+	opacity: 0.75;
+}
+
+.agentic-header-jira {
+	margin-top: 4px;
+	font-size: 10px;
+	opacity: 0.85;
+}
+
+.agentic-status-bar {
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+	background: var(--vscode-editorWidget-background, #f8f9fa);
+	padding: 10px 14px;
+}
+
+.agentic-status-bar__row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+}
+
+.agentic-status-bar__icon {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--vscode-button-background, #0078d4);
+	color: var(--vscode-button-foreground, #fff);
+	font-size: 12px;
+}
+
+.agentic-status-bar__icon--pulse {
+	animation: agentic-status-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agentic-status-pulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.65; transform: scale(0.92); }
+}
+
+.agentic-status-bar__text {
+	flex: 1;
+	min-width: 0;
+}
+
+.agentic-status-bar__title {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.agentic-status-bar__detail {
+	font-size: 11px;
+	opacity: 0.8;
+	margin-top: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.agentic-status-bar__phase {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	opacity: 0.55;
+	padding-top: 2px;
+}
+
+.agentic-status-bar__progress-track {
+	margin-top: 8px;
+	height: 3px;
+	border-radius: 2px;
+	background: var(--vscode-panel-border, #e0e0e0);
+	overflow: hidden;
+}
+
+.agentic-status-bar__progress-fill {
+	height: 100%;
+	border-radius: 2px;
+	background: var(--vscode-progressBar-background, #0078d4);
+	transition: width 0.15s ease-out;
+}
+
+.agentic-status-bar--streaming .agentic-status-bar__icon {
+	background: var(--vscode-charts-blue, #3794ff);
+}
+
+.agentic-status-bar--tool .agentic-status-bar__icon {
+	background: var(--vscode-charts-orange, #e08800);
+}
+
+.agentic-status-bar--approval .agentic-status-bar__icon {
+	background: var(--vscode-inputValidation-warningBorder, #cca700);
+}
+
+.agentic-status-bar--error .agentic-status-bar__icon {
+	background: var(--vscode-errorForeground, #c72e2e);
+}
+
+.agentic-status-bar--complete .agentic-status-bar__icon {
+	background: var(--vscode-testing-iconPassed, #388a34);
+}
+
+.agentic-live-stream {
+	margin: 0 14px 10px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--vscode-focusBorder, #3794ff);
+	background: var(--vscode-editor-background, #fff);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.agentic-live-stream__label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--vscode-descriptionForeground, #666);
+	margin-bottom: 8px;
+}
+
+.agentic-live-stream__body {
+	font-size: 13px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+.agentic-live-stream__placeholder {
+	opacity: 0.55;
+	font-style: italic;
+}
+
+.agentic-live-stream__cursor {
+	display: inline-block;
+	width: 2px;
+	height: 1em;
+	margin-left: 2px;
+	vertical-align: text-bottom;
+	background: var(--vscode-editorCursor-foreground, #000);
+	animation: agentic-cursor-blink 1s step-end infinite;
+}
+
+@keyframes agentic-cursor-blink {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0; }
+}
+
+.agentic-toolbar {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	padding: 8px 14px;
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+}
+
+.agentic-btn {
+	border: 1px solid var(--vscode-button-border, #ccc);
+	background: var(--vscode-button-secondaryBackground, #f5f5f5);
+	color: inherit;
+	border-radius: 6px;
+	padding: 4px 10px;
+	cursor: pointer;
+	font-size: 12px;
+}
+
+.agentic-btn-primary {
+	background: var(--vscode-button-background, #0078d4);
+	color: var(--vscode-button-foreground, #fff);
+	border-color: transparent;
+}
+
+.agentic-messages {
+	flex: 1;
+	min-height: 120px;
+	overflow-y: auto;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.agentic-card {
+	border: 1px solid var(--vscode-panel-border, #e8e8e8);
+	border-radius: 10px;
+	padding: 10px 12px;
+	background: var(--vscode-editor-background, #fff);
+}
+
+.agentic-card-user {
+	background: var(--vscode-input-background, #f7f7f7);
+}
+
+.agentic-card-assistant {
+	border-color: var(--vscode-focusBorder, #3794ff);
+}
+
+.agentic-role {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	opacity: 0.65;
+	margin-bottom: 4px;
+}
+
+.agentic-thinking {
+	margin-top: 8px;
+	border-top: 1px dashed var(--vscode-panel-border, #ddd);
+	padding-top: 8px;
+}
+
+.agentic-thinking-item {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+	margin-bottom: 6px;
+	font-size: 12px;
+}
+
+.agentic-thinking-icon {
+	width: 16px;
+	text-align: center;
+}
+
+.agentic-tool-card {
+	margin-top: 8px;
+	padding: 8px;
+	border-radius: 8px;
+	background: var(--vscode-textBlockQuote-background, #f3f3f3);
+	font-size: 12px;
+}
+
+.agentic-composer {
+	border-top: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+	padding: 10px 14px 14px;
+}
+
+.agentic-composer textarea {
+	width: 100%;
+	min-height: 72px;
+	resize: vertical;
+	border-radius: 8px;
+	border: 1px solid var(--vscode-input-border, #ccc);
+	padding: 8px 10px;
+	font-family: inherit;
+	font-size: 13px;
+	box-sizing: border-box;
+	background: var(--vscode-input-background, #fff);
+	color: inherit;
+}
+
+.agentic-toggles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 8px 0;
+	font-size: 12px;
+}
+
+.agentic-approval {
+	border: 1px solid var(--vscode-inputValidation-warningBorder, #cca700);
+	background: var(--vscode-inputValidation-warningBackground, #fff8e1);
+	border-radius: 8px;
+	padding: 10px;
+	margin-top: 8px;
+}
+
+.agentic-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 6px 0;
+}
+
+.agentic-pill {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	border: 1px solid var(--vscode-badge-background, #ddd);
+	background: var(--vscode-badge-background, #eee);
+}
+
+.agentic-checkpoint {
+	font-size: 11px;
+	padding: 6px 10px;
+	background: var(--vscode-editorInfo-background, #e8f4ff);
+	border-radius: 6px;
+	margin: 6px 0;
+}
+
+.agentic-settings-panel {
+	margin-top: 10px;
+	padding: 10px;
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+	border-radius: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.agentic-settings-panel label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 11px;
+}
+
+.agentic-settings-panel input,
+.agentic-settings-panel select {
+	font-size: 12px;
+	padding: 4px 6px;
+}
+
+.agentic-settings-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.agentic-btn-ghost {
+	background: transparent;
+	border: none;
+	opacity: 0.8;
+	cursor: pointer;
+}
+
+.agentic-checkbox {
+	flex-direction: row !important;
+	align-items: center;
+	gap: 8px !important;
+}
+
+.agentic-thinking-toggle {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 11px;
+	opacity: 0.85;
+	padding: 4px 0;
+	margin-bottom: 4px;
+}
+
+.agentic-thinking-kind {
+	font-size: 10px;
+	opacity: 0.65;
+	margin-right: 6px;
+	text-transform: uppercase;
+}
+
+/* Conversation turn: user message, then activity + assistant reply */
+.agentic-turn {
+	margin-bottom: 16px;
+}
+
+.agentic-message-body {
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.5;
+}
+
+.agentic-activity-feed {
+	margin: 8px 0 10px 4px;
+	padding-left: 12px;
+	border-left: 2px solid var(--vscode-textLink-foreground, #3794ff);
+}
+
+.agentic-activity-line {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+	margin-bottom: 8px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--vscode-descriptionForeground, #717171);
+}
+
+.agentic-activity-line--streaming {
+	color: var(--vscode-editor-foreground, #333);
+}
+
+.agentic-activity-bullet {
+	flex-shrink: 0;
+	opacity: 0.5;
+	font-weight: 600;
+}
+
+.agentic-activity-text {
+	flex: 1;
+}
+
+.agentic-activity-cursor,
+.agentic-answer-cursor {
+	display: inline-block;
+	width: 2px;
+	height: 1em;
+	margin-left: 2px;
+	vertical-align: text-bottom;
+	background: var(--vscode-editorCursor-foreground, #000);
+	animation: agentic-blink 1s step-end infinite;
+}
+
+@keyframes agentic-blink {
+	50% { opacity: 0; }
+}
+
+.agentic-answer-placeholder {
+	opacity: 0.55;
+	font-style: italic;
+}
+
+.agentic-error-banner {
+	margin-top: 8px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	background: var(--vscode-inputValidation-errorBackground, #ffeaea);
+	color: var(--vscode-inputValidation-errorForeground, #b00020);
+	font-size: 12px;
+}
+
+.agentic-jira-panel {
+	margin: 8px 14px;
+	padding: 10px 12px;
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+	border-radius: 8px;
+	background: var(--vscode-editorWidget-background, #f8f9fa);
+}
+
+.agentic-jira-panel__title {
+	font-weight: 600;
+	font-size: 12px;
+	margin-bottom: 4px;
+}
+
+.agentic-jira-panel__hint {
+	font-size: 11px;
+	opacity: 0.75;
+	margin-bottom: 8px;
+}
+
+.agentic-jira-panel__row {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.agentic-jira-input {
+	flex: 1;
+	font-size: 12px;
+	padding: 4px 8px;
+}
+
+/* Interactive JIRA workflow */
+.agentic-jira-panel--interactive {
+	max-height: 42vh;
+	overflow-y: auto;
+}
+
+.agentic-jira-panel__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.agentic-jira-panel__subtitle {
+	font-size: 11px;
+	opacity: 0.75;
+	margin-top: 2px;
+	line-height: 1.35;
+}
+
+.agentic-jira-section {
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--vscode-sideBarSectionHeader-border, #e8e8e8);
+}
+
+.agentic-jira-section__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.agentic-jira-section h3 {
+	margin: 0 0 8px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	opacity: 0.85;
+}
+
+.agentic-jira-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 160px;
+	overflow-y: auto;
+}
+
+.agentic-jira-card {
+	text-align: left;
+	padding: 8px 10px;
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #e0e0e0);
+	border-radius: 6px;
+	background: var(--vscode-sideBar-background, #fff);
+	cursor: pointer;
+}
+
+.agentic-jira-card:hover {
+	border-color: var(--vscode-focusBorder, #0078d4);
+}
+
+.agentic-jira-card--selected {
+	border-color: var(--vscode-focusBorder, #0078d4);
+	box-shadow: 0 0 0 1px var(--vscode-focusBorder, #0078d4);
+}
+
+.agentic-jira-card__key {
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.agentic-jira-card__summary {
+	font-size: 11px;
+	margin-top: 2px;
+	opacity: 0.9;
+}
+
+.agentic-jira-card__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 6px;
+}
+
+.agentic-jira-card__footer {
+	display: flex;
+	justify-content: space-between;
+	font-size: 10px;
+	opacity: 0.7;
+	margin-top: 4px;
+}
+
+.agentic-pill {
+	display: inline-block;
+	font-size: 10px;
+	padding: 1px 6px;
+	border-radius: 10px;
+	background: var(--vscode-badge-background, #e8e8e8);
+	color: var(--vscode-badge-foreground, #333);
+}
+
+.agentic-pill--muted {
+	opacity: 0.85;
+}
+
+.agentic-pill--accent {
+	background: var(--vscode-button-background, #0078d4);
+	color: var(--vscode-button-foreground, #fff);
+}
+
+.agentic-jira-detail-card {
+	padding: 10px;
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+	border-radius: 6px;
+	background: var(--vscode-sideBar-background, #fff);
+}
+
+.agentic-jira-detail-card__key {
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.agentic-jira-detail-card__summary {
+	margin-top: 4px;
+	font-size: 12px;
+}
+
+.agentic-jira-dl {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 12px;
+	font-size: 11px;
+	margin: 10px 0 0;
+}
+
+.agentic-jira-dl dt {
+	opacity: 0.7;
+}
+
+.agentic-jira-description {
+	margin-top: 10px;
+	font-size: 11px;
+}
+
+.agentic-jira-description pre {
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 120px;
+	overflow-y: auto;
+	margin: 4px 0 0;
+	padding: 8px;
+	background: var(--vscode-textCodeBlock-background, #f4f4f4);
+	border-radius: 4px;
+}
+
+.agentic-jira-plan-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.agentic-jira-plan-block {
+	padding: 8px 10px;
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #ececec);
+	border-radius: 6px;
+	background: var(--vscode-sideBar-background, #fff);
+}
+
+.agentic-jira-plan-block__title {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	opacity: 0.75;
+	margin-bottom: 4px;
+}
+
+.agentic-jira-plan-list {
+	margin: 0;
+	padding-left: 18px;
+	font-size: 11px;
+}
+
+.agentic-jira-timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 140px;
+	overflow-y: auto;
+}
+
+.agentic-jira-timeline__item {
+	display: flex;
+	gap: 8px;
+	padding: 6px 0;
+	font-size: 11px;
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #f0f0f0);
+}
+
+.agentic-jira-timeline__dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-top: 4px;
+	flex-shrink: 0;
+	background: var(--vscode-focusBorder, #0078d4);
+}
+
+.agentic-jira-timeline__item--success .agentic-jira-timeline__dot {
+	background: #2e7d32;
+}
+
+.agentic-jira-timeline__item--warning .agentic-jira-timeline__dot {
+	background: #ed6c02;
+}
+
+.agentic-jira-timeline__item--error .agentic-jira-timeline__dot {
+	background: #c62828;
+}
+
+.agentic-jira-timeline__meta {
+	font-size: 10px;
+	opacity: 0.65;
+	display: flex;
+	gap: 8px;
+	margin-top: 2px;
+}
+
+.agentic-jira-checkpoints {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 120px;
+	overflow-y: auto;
+}
+
+.agentic-jira-checkpoint-item {
+	padding: 6px 0;
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #f0f0f0);
+	font-size: 11px;
+}
+
+.agentic-jira-checkpoint-item__head {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.agentic-jira-decisions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.agentic-btn-primary {
+	background: var(--vscode-button-background, #0078d4);
+	color: var(--vscode-button-foreground, #fff);
+}
+
+.agentic-btn--sm {
+	font-size: 11px;
+	padding: 2px 8px;
+}
+
+.agentic-jira-error {
+	color: var(--vscode-inputValidation-errorForeground, #b00020);
+	font-size: 11px;
+	padding: 6px 8px;
+	border-radius: 4px;
+	background: var(--vscode-inputValidation-errorBackground, #ffeaea);
+}
+
+.agentic-jira-empty,
+.agentic-jira-loading {
+	font-size: 11px;
+	opacity: 0.75;
+	font-style: italic;
+}
+
+.agentic-jira-advanced {
+	margin-top: 8px;
+}
+
+.agentic-jira-input--filter {
+	margin-top: 6px;
+	width: 100%;
+}
+
+.agentic-muted {
+	opacity: 0.6;
+}
+
+/* JIRA embedded in chat */
+.agentic-jira-chat {
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--vscode-sideBarSectionHeader-border, #ececec);
+}
+
+.agentic-jira-chat__toolbar {
+	margin-bottom: 8px;
+}
+
+.agentic-jira-cards--chat {
+	max-height: 220px;
+}
+
+.agentic-jira-detail-card--chat {
+	margin-bottom: 10px;
+}
+
+.agentic-composer-jira {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--vscode-editorWidget-background, #f4f6f8);
+	border: 1px solid var(--vscode-sideBarSectionHeader-border, #e5e5e5);
+}
+
+.agentic-composer-jira__label {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	opacity: 0.75;
+}

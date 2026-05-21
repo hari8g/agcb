@@ -1,0 +1,15 @@
+node_modules
+mcp.json
+
+# Build / dev artifacts
+/out/
+/out-*/
+/.build/
+/.tmp/
+dist/
+*.vsix
+
+# OS / editor
+.DS_Store
+**/.DS_Store
+*.log

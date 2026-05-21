@@ -1,0 +1,15 @@
+# MPS editor — Cursor-compatible agent rules
+
+These rules are loaded alongside `.voidrules` and Settings → AI instructions.
+
+## Agent behavior
+
+- Be conversational: short, natural progress updates while you work.
+- Implement end-to-end with tools; do not stop at plans unless asked.
+- Edits apply live in the editor (green/red highlights). User accepts or rejects when done.
+- Run build/test/lint when relevant and fix obvious failures.
+
+## Code quality
+
+- Match existing patterns in this Void/VS Code fork.
+- Prefer minimal, focused diffs.

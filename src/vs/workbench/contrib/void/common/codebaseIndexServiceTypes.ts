@@ -1,0 +1,19 @@
+/*--------------------------------------------------------------------------------------
+ *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *--------------------------------------------------------------------------------------*/
+
+import { URI } from '../../../../base/common/uri.js';
+
+export type CodebaseSearchResult = {
+	uri: URI;
+	score: number;
+	line: number;
+	snippet: string;
+};
+
+export type CodebaseIndexStats = {
+	fileCount: number;
+	lastIndexed: number | null;
+	isIndexing: boolean;
+};
