@@ -54,15 +54,32 @@ export function validateToolArgs(
 	return { valid: errors.length === 0, errors };
 }
 
+/** Normalize tool output for the model (MCP often returns objects). */
+export function coerceToolResultContent(value: unknown): string {
+	if (value === null || value === undefined) {
+		return '';
+	}
+	if (typeof value === 'string') {
+		if (value === '[object Object]') {
+			return '(tool returned non-serializable object — retry or use workspace-relative path)';
+		}
+		return value;
+	}
+	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+		return String(value);
+	}
+	if (typeof value === 'object') {
+		try {
+			return JSON.stringify(value, null, 2);
+		} catch {
+			return String(value);
+		}
+	}
+	return String(value);
+}
+
 export function stringifyToolResult(name: string, result: unknown, isError = false): string {
-	if (typeof result === 'string') {
-		const prefix = isError ? `[tool_error:${name}] ` : `[tool_result:${name}] `;
-		return prefix + result;
-	}
+	const body = coerceToolResultContent(result);
 	const prefix = isError ? `[tool_error:${name}] ` : `[tool_result:${name}] `;
-	try {
-		return prefix + JSON.stringify(result, null, 2);
-	} catch {
-		return prefix + String(result);
-	}
+	return prefix + body;
 }

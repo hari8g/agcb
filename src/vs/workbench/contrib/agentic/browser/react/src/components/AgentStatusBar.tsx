@@ -63,7 +63,11 @@ export function AgentStatusBar({
 						<div className="agentic-status-bar__detail">{display.detail}</div>
 					)}
 				</div>
-				<span className="agentic-status-bar__phase">{phaseLabel[display.phase]}</span>
+				<span className="agentic-status-bar__phase">
+					{display.workflowPhase
+						? display.workflowPhase.replace(/_/g, ' ')
+						: phaseLabel[display.phase]}
+				</span>
 			</div>
 			{typeof display.progress === 'number' && isActive && (
 				<div className="agentic-status-bar__progress-track">

@@ -1,9 +1,24 @@
+import { FileAccess } from '../../../../../../../base/common/network.js';
 import { DisposableStore } from '../../../../../../../base/common/lifecycle.js';
 import { IAgenticChatThreadService } from '../../../services/chatThreadService.js';
 import { IJiraWorkflowService } from '../../../services/jiraWorkflowServiceInterface.js';
+import { IKnowledgeGraphService } from '../../../services/knowledgeGraphService.js';
+import { IAgentMetricsService } from '../../../services/agentMetricsService.js';
+import { ISessionMemoryService } from '../../../services/sessionMemoryService.js';
 import { IWorkspaceContextService } from '../../../../../../../platform/workspace/common/workspace.js';
 import { IEditApprovalService } from '../../../services/editApprovalService.js';
 import { IAgenticSettingsService } from '../../../services/agenticSettingsService.js';
+import { IVoidSettingsService } from '../../../../../void/common/voidSettingsService.js';
+import { summarizeSearchReplaceBlocks } from '../../../../common/editDiffPreview.js';
+import { splitStreamContent } from '../../../../common/streamContent.js';
+import { parsePlanProposalContent } from '../../../../common/planProposalContent.js';
+import { listAgentSkills } from '../../../../common/agentSkills.js';
+import { COMPOSER_AGENT_MODES } from '../../../../common/agentModes.js';
+import { resolveAgentCapabilities, AGENT_CAPABILITY_PROFILE_LABELS, AGENT_CAPABILITY_CATALOG } from '../../../../common/agentCapabilities.js';
+import { workflowPhaseLiveTitle } from '../../../../common/agentWorkflowOrchestration.js';
+import { canonicalPhaseLabel } from '../../../../common/orchestration/workflowPhases.js';
+import { buildMissionRows } from '../../../../common/agentThreadStatus.js';
+import { isVoidLikeSimpleUiMode, shouldSkipWorkflowChrome } from '../../../../common/voidLikeChatMode.js';
 
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -1190,19 +1205,19 @@ var require_react_jsx_runtime_development = __commonJS({
       function validateChildKeys(node) {
         "object" === typeof node && null !== node && node.$$typeof === REACT_ELEMENT_TYPE && node._store && (node._store.validated = 1);
       }
-      var React6 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler");
-      var REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React17 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler");
+      var REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React17.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React6 = {
+      React17 = {
         "react-stack-bottom-frame": function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React6["react-stack-bottom-frame"].bind(
-        React6,
+      var unknownOwnerDebugStack = React17["react-stack-bottom-frame"].bind(
+        React17,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -1562,7 +1577,7 @@ var require_react_dom_development = __commonJS({
         return dispatcher;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React6 = require_react(), Internals = {
+      var React17 = require_react(), Internals = {
         d: {
           f: noop,
           r: function() {
@@ -1580,7 +1595,7 @@ var require_react_dom_development = __commonJS({
         },
         p: 0,
         findDOMNode: null
-      }, REACT_PORTAL_TYPE = Symbol.for("react.portal"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      }, REACT_PORTAL_TYPE = Symbol.for("react.portal"), ReactSharedInternals = React17.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
         "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
       );
@@ -3117,7 +3132,7 @@ var require_react_dom_client_development = __commonJS({
         "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
       }
       function validateOptionProps(element, props) {
-        null == props.value && ("object" === typeof props.children && null !== props.children ? React6.Children.forEach(props.children, function(child) {
+        null == props.value && ("object" === typeof props.children && null !== props.children ? React17.Children.forEach(props.children, function(child) {
           null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
             "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
           ));
@@ -16698,10 +16713,10 @@ var require_react_dom_client_development = __commonJS({
         ));
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var Scheduler = require_scheduler(), React6 = require_react(), ReactDOM = require_react_dom(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_PROVIDER_TYPE = Symbol.for("react.provider"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
+      var Scheduler = require_scheduler(), React17 = require_react(), ReactDOM = require_react_dom(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_PROVIDER_TYPE = Symbol.for("react.provider"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
       var REACT_ACTIVITY_TYPE = Symbol.for("react.activity");
       var REACT_MEMO_CACHE_SENTINEL = Symbol.for("react.memo_cache_sentinel");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React17.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
         pending: false,
         data: null,
         method: null,
@@ -19415,7 +19430,7 @@ var require_react_dom_client_development = __commonJS({
         }
       };
       (function() {
-        var isomorphicReactPackageVersion = React6.version;
+        var isomorphicReactPackageVersion = React17.version;
         if ("19.1.0" !== isomorphicReactPackageVersion)
           throw Error(
             'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.1.0\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -19562,9 +19577,18 @@ var threadsListeners = /* @__PURE__ */ new Set();
 var pendingApprovals = [];
 var approvalListeners = /* @__PURE__ */ new Set();
 var workspaceLabel = "";
+var hasWorkspace = false;
 var workspaceListeners = /* @__PURE__ */ new Set();
+var knowledgeGraphState = { graph: null, loading: false, error: null };
+var knowledgeGraphListeners = /* @__PURE__ */ new Set();
+var voidChatModels = [];
+var voidChatModelSelection = null;
+var voidChatModelListeners = /* @__PURE__ */ new Set();
+var liveStatus = null;
 var liveStatusListeners = /* @__PURE__ */ new Set();
 var services_ = null;
+var agentMetricsService_ = null;
+var sessionMemoryService_ = null;
 function requireServices() {
   if (!services_) {
     throw new Error("Agentic services not initialized \u2014 open the Agentic AI panel after app startup");
@@ -19580,49 +19604,141 @@ function getAgenticSettingsService() {
 function getJiraWorkflowService() {
   return requireServices().jiraWorkflowService;
 }
+function getKnowledgeGraphService() {
+  return requireServices().knowledgeGraphService;
+}
+function getAgentMetricsService() {
+  if (!agentMetricsService_) {
+    throw new Error("Agentic metrics not initialized \u2014 open the Agentic AI panel after app startup");
+  }
+  return agentMetricsService_;
+}
+function getSessionMemoryService() {
+  if (!sessionMemoryService_) {
+    throw new Error("Agentic session memory not initialized \u2014 open the Agentic AI panel after app startup");
+  }
+  return sessionMemoryService_;
+}
+function syncVoidChatModels(voidSettings) {
+  const state = voidSettings.state;
+  voidChatModelSelection = state.modelSelectionOfFeature.Chat;
+  voidChatModels = state._modelOptions.map((o) => ({
+    label: o.selection.modelName,
+    providerName: o.selection.providerName,
+    modelName: o.selection.modelName
+  }));
+  voidChatModelListeners.forEach((l) => l());
+}
+function setVoidChatModel(providerName, modelName) {
+  requireServices().voidSettingsService.setModelSelectionOfFeature("Chat", { providerName, modelName });
+}
 function updateWorkspaceLabel(workspace) {
   const ws = workspace.getWorkspace();
+  hasWorkspace = ws.folders.length > 0;
   workspaceLabel = ws.folders.map((f) => f.name).join(", ") || "No folder open";
   workspaceListeners.forEach((l) => l());
 }
+async function refreshKnowledgeGraphState(kgSvc, loading = false) {
+  if (!hasWorkspace) {
+    knowledgeGraphState = { graph: null, loading: false, error: null };
+    knowledgeGraphListeners.forEach((l) => l());
+    return;
+  }
+  knowledgeGraphState = { ...knowledgeGraphState, loading, error: null };
+  knowledgeGraphListeners.forEach((l) => l());
+  try {
+    const graph = loading ? await kgSvc.getOrBuild("", { forceRefresh: true }) : kgSvc.getCached() ?? await kgSvc.ensureLoaded();
+    knowledgeGraphState = { graph, loading: false, error: null };
+  } catch (e) {
+    knowledgeGraphState = {
+      graph: kgSvc.getCached(),
+      loading: false,
+      error: e instanceof Error ? e.message : String(e)
+    };
+  }
+  knowledgeGraphListeners.forEach((l) => l());
+}
+var agenticServicesRegisterCount = 0;
+var agenticServicesListenerStore = null;
 function _registerAgenticServices(accessor) {
-  const store = new DisposableStore();
-  const chat = accessor.get(IAgenticChatThreadService);
-  const workspace = accessor.get(IWorkspaceContextService);
-  const approvals = accessor.get(IEditApprovalService);
-  const settings = accessor.get(IAgenticSettingsService);
-  const jiraWorkflow = accessor.get(IJiraWorkflowService);
-  services_ = {
-    chatThreadService: chat,
-    editApprovalService: approvals,
-    agenticSettingsService: settings,
-    jiraWorkflowService: jiraWorkflow
-  };
-  threadsState = chat.state;
-  threadsListeners.forEach((l) => l());
-  chat.getLiveStatus();
-  liveStatusListeners.forEach((l) => l());
-  updateWorkspaceLabel(workspace);
-  store.add(chat.onDidChange(() => {
+  agenticServicesRegisterCount++;
+  if (!agenticServicesListenerStore) {
+    const store = new DisposableStore();
+    agenticServicesListenerStore = store;
+    const chat = accessor.get(IAgenticChatThreadService);
+    const workspace = accessor.get(IWorkspaceContextService);
+    const approvals = accessor.get(IEditApprovalService);
+    const settings = accessor.get(IAgenticSettingsService);
+    const jiraWorkflow = accessor.get(IJiraWorkflowService);
+    const knowledgeGraph = accessor.get(IKnowledgeGraphService);
+    const voidSettings = accessor.get(IVoidSettingsService);
+    agentMetricsService_ = accessor.get(IAgentMetricsService);
+    sessionMemoryService_ = accessor.get(ISessionMemoryService);
+    services_ = {
+      chatThreadService: chat,
+      editApprovalService: approvals,
+      agenticSettingsService: settings,
+      jiraWorkflowService: jiraWorkflow,
+      knowledgeGraphService: knowledgeGraph,
+      voidSettingsService: voidSettings
+    };
+    syncVoidChatModels(voidSettings);
+    store.add(voidSettings.onDidChangeState(() => syncVoidChatModels(voidSettings)));
     threadsState = chat.state;
     threadsListeners.forEach((l) => l());
-  }));
-  store.add(chat.onDidLiveStatusChange((s) => {
+    liveStatus = chat.getLiveStatus();
     liveStatusListeners.forEach((l) => l());
-  }));
-  store.add(approvals.onDidChange(() => {
-    pendingApprovals = approvals.getPending();
-    approvalListeners.forEach((l) => l());
-  }));
-  store.add(workspace.onDidChangeWorkspaceFolders(() => {
     updateWorkspaceLabel(workspace);
-  }));
-  store.add({
+    store.add(chat.onDidChange(() => {
+      threadsState = chat.state;
+      liveStatus = chat.getLiveStatus();
+      threadsListeners.forEach((l) => l());
+      liveStatusListeners.forEach((l) => l());
+    }));
+    store.add(chat.onDidLiveStatusChange((s) => {
+      liveStatus = s;
+      liveStatusListeners.forEach((l) => l());
+    }));
+    store.add(approvals.onDidChange(() => {
+      pendingApprovals = approvals.getPending();
+      approvalListeners.forEach((l) => l());
+    }));
+    store.add(workspace.onDidChangeWorkspaceFolders(() => {
+      updateWorkspaceLabel(workspace);
+      void refreshKnowledgeGraphState(knowledgeGraph);
+    }));
+    store.add(knowledgeGraph.onDidChange(() => {
+      knowledgeGraphState = {
+        graph: knowledgeGraph.getCached(),
+        loading: false,
+        error: null
+      };
+      knowledgeGraphListeners.forEach((l) => l());
+    }));
+    void refreshKnowledgeGraphState(knowledgeGraph);
+  }
+  return [{
     dispose: () => {
-      services_ = null;
+      agenticServicesRegisterCount--;
+      if (agenticServicesRegisterCount <= 0) {
+        agenticServicesRegisterCount = 0;
+        agenticServicesListenerStore?.dispose();
+        agenticServicesListenerStore = null;
+        services_ = null;
+      }
     }
-  });
-  return [store];
+  }];
+}
+function useLiveAgentStatus() {
+  const [, setTick] = (0, import_react.useState)(0);
+  (0, import_react.useEffect)(() => {
+    const l = () => setTick((t) => t + 1);
+    liveStatusListeners.add(l);
+    return () => {
+      liveStatusListeners.delete(l);
+    };
+  }, []);
+  return liveStatus;
 }
 function useAgenticThreads() {
   const [, setTick] = (0, import_react.useState)(0);
@@ -19645,6 +19761,39 @@ function useWorkspaceLabel() {
     };
   }, []);
   return workspaceLabel;
+}
+function useHasWorkspace() {
+  const [, setTick] = (0, import_react.useState)(0);
+  (0, import_react.useEffect)(() => {
+    const l = () => setTick((t) => t + 1);
+    workspaceListeners.add(l);
+    return () => {
+      workspaceListeners.delete(l);
+    };
+  }, []);
+  return hasWorkspace;
+}
+function useKnowledgeGraph() {
+  const [, setTick] = (0, import_react.useState)(0);
+  (0, import_react.useEffect)(() => {
+    const l = () => setTick((t) => t + 1);
+    knowledgeGraphListeners.add(l);
+    return () => {
+      knowledgeGraphListeners.delete(l);
+    };
+  }, []);
+  return knowledgeGraphState;
+}
+function useVoidChatModels() {
+  const [, setTick] = (0, import_react.useState)(0);
+  (0, import_react.useEffect)(() => {
+    const l = () => setTick((t) => t + 1);
+    voidChatModelListeners.add(l);
+    return () => {
+      voidChatModelListeners.delete(l);
+    };
+  }, []);
+  return { models: voidChatModels, selection: voidChatModelSelection };
 }
 function usePendingApprovals() {
   const [, setTick] = (0, import_react.useState)(0);
@@ -19701,256 +19850,740 @@ function useInteractiveJiraWorkflow() {
 }
 
 // src/util/mountFnGenerator.tsx
-var mountFnGenerator = (Component) => (rootElement, accessor, props) => {
+var AGENTIC_STYLESHEET_ID = "agentic-workbench-styles";
+function isServicesAccessor(value) {
+  return typeof value === "object" && value !== null && typeof value.get === "function";
+}
+function ensureAgenticStylesheet() {
+  if (typeof document === "undefined" || document.getElementById(AGENTIC_STYLESHEET_ID)) {
+    return;
+  }
+  const link = document.createElement("link");
+  link.id = AGENTIC_STYLESHEET_ID;
+  link.rel = "stylesheet";
+  link.type = "text/css";
+  link.href = FileAccess.asBrowserUri("vs/workbench/contrib/agentic/browser/styles/agentic.css").toString(true);
+  document.head.appendChild(link);
+}
+var mountFnGenerator = (Component) => (rootElement, accessorOrProps, props) => {
   if (typeof document === "undefined") {
     console.error("agentic mountFnGenerator: document was undefined");
     return { rerender: () => {
     }, dispose: () => {
     } };
   }
-  const disposables = _registerAgenticServices(accessor);
+  let accessor;
+  let resolvedProps;
+  if (isServicesAccessor(accessorOrProps)) {
+    accessor = accessorOrProps;
+    resolvedProps = props;
+  } else {
+    resolvedProps = accessorOrProps;
+  }
+  ensureAgenticStylesheet();
+  const registrationDisposables = accessor ? _registerAgenticServices(accessor) : [];
   const root = (0, import_client.createRoot)(rootElement);
   const rerender = (p) => {
     root.render((0, import_jsx_runtime.jsx)(Component, p ?? {}));
   };
   const dispose = () => {
     root.unmount();
-    disposables.forEach((d) => d.dispose());
+    registrationDisposables.forEach((d) => d.dispose());
   };
-  rerender(props);
+  rerender(resolvedProps);
   return { rerender, dispose };
 };
 
-// src/components/ActivityFeed.tsx
-var import_react2 = __toESM(require_react());
-var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-function ActivityFeed({ message }) {
-  const bottomRef = (0, import_react2.useRef)(null);
-  const lines = message.activityLines ?? [];
-  const isActive = message.state && !["complete", "error", "idle"].includes(message.state);
-  (0, import_react2.useEffect)(() => {
-    bottomRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [lines.length, lines[lines.length - 1]?.text]);
-  if (!lines.length && !isActive) {
-    return null;
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "agentic-activity-feed", "aria-live": "polite", "aria-busy": isActive, children: [
-    lines.map((line) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-      "div",
-      {
-        className: `agentic-activity-line agentic-activity-line--${line.status}`,
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-activity-bullet", "aria-hidden": true, children: "\u203A" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-activity-text", children: line.text }),
-          line.status === "streaming" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-activity-cursor", "aria-hidden": true })
-        ]
-      },
-      line.id
-    )),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { ref: bottomRef })
-  ] });
-}
+// src/components/AgenticChat.tsx
+var import_react14 = __toESM(require_react());
 
-// src/components/ToolCallCard.tsx
-var import_jsx_runtime3 = __toESM(require_jsx_runtime());
-function ToolCallCard({ toolCall }) {
-  const argsPreview = JSON.stringify(toolCall.arguments).slice(0, 200);
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "agentic-tool-card", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("strong", { children: toolCall.name }),
-      " \xB7 ",
-      toolCall.status
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { opacity: 0.8, marginTop: 4 }, children: argsPreview }),
-    toolCall.resultPreview && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("pre", { style: { marginTop: 6, fontSize: 11, whiteSpace: "pre-wrap" }, children: toolCall.resultPreview.slice(0, 500) }),
-    toolCall.error && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { color: "var(--vscode-errorForeground)" }, children: toolCall.error })
-  ] });
+// src/components/jira/JiraTicketList.tsx
+var import_react2 = __toESM(require_react());
+
+// src/agentic-bundle-ticketStatus.ts
+var CLOSED_STATUS = /^(done|closed|resolved|cancelled|canceled|complete|won'?t\s*do|duplicate|released)\b/i;
+function isOpen(ticket) {
+  if (ticket.isOpen !== void 0) {
+    return ticket.isOpen;
+  }
+  const status = (ticket.status ?? "").trim();
+  return !status || !CLOSED_STATUS.test(status);
+}
+function partitionTicketsByOpen(tickets) {
+  const open = [];
+  const closed = [];
+  for (const t of tickets) {
+    const annotated = { ...t, isOpen: isOpen(t) };
+    if (annotated.isOpen) {
+      open.push(annotated);
+    } else {
+      closed.push(annotated);
+    }
+  }
+  return { open, closed };
 }
 
 // src/components/jira/JiraTicketCard.tsx
-var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var import_jsx_runtime2 = __toESM(require_jsx_runtime());
+function priorityClass(priority) {
+  const p = (priority ?? "").toLowerCase();
+  if (/high|highest|critical|blocker/.test(p)) {
+    return "agentic-pill--priority-high";
+  }
+  if (/low|lowest|minor/.test(p)) {
+    return "agentic-pill--priority-low";
+  }
+  return "agentic-pill--muted";
+}
 function JiraTicketCard(props) {
-  const { ticket, selected, onSelect } = props;
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
-    "button",
-    {
-      type: "button",
-      className: `agentic-jira-card${selected ? " agentic-jira-card--selected" : ""}`,
-      onClick: onSelect,
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "agentic-jira-card__key", children: ticket.key }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "agentic-jira-card__summary", children: ticket.summary }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "agentic-jira-card__meta", children: [
-          ticket.status && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "agentic-pill", children: ticket.status }),
-          ticket.priority && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "agentic-pill agentic-pill--muted", children: ticket.priority }),
-          ticket.issueType && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "agentic-pill agentic-pill--muted", children: ticket.issueType })
+  const { ticket, isOpen: isOpen2, onSelect } = props;
+  if (!isOpen2) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "agentic-jira-card agentic-jira-card--closed", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "agentic-jira-card__row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-jira-card__key", children: ticket.key }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-jira-card__summary", children: ticket.summary })
+    ] }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "agentic-jira-card agentic-jira-card--open", onClick: onSelect, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "agentic-jira-card__row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-jira-card__key", children: ticket.key }),
+      ticket.status && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-pill agentic-pill--status", children: ticket.status })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "agentic-jira-card__summary", children: ticket.summary }),
+    (ticket.priority || ticket.issueType || ticket.assignee) && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "agentic-jira-card__meta", children: [
+      ticket.priority && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `agentic-pill ${priorityClass(ticket.priority)}`, children: ticket.priority }),
+      ticket.issueType && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-pill agentic-pill--type", children: ticket.issueType }),
+      ticket.assignee && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-jira-card__assignee", children: ticket.assignee })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "agentic-jira-card__cta", "aria-hidden": true, children: "Open \u2192" })
+  ] });
+}
+
+// src/components/jira/JiraTicketList.tsx
+var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var HIGHLIGHT_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "priority", label: "High priority" },
+  { id: "bugs", label: "Bugs" },
+  { id: "stories", label: "Stories" }
+];
+function matchesHighlight(ticket, highlight) {
+  if (highlight === "all") {
+    return true;
+  }
+  const priority = (ticket.priority ?? "").toLowerCase();
+  const issueType = (ticket.issueType ?? "").toLowerCase();
+  if (highlight === "priority") {
+    return /high|highest|critical|blocker/.test(priority);
+  }
+  if (highlight === "bugs") {
+    return /bug|defect/.test(issueType);
+  }
+  if (highlight === "stories") {
+    return /story|feature|epic/.test(issueType);
+  }
+  return true;
+}
+function JiraTicketList(props) {
+  const [highlight, setHighlight] = (0, import_react2.useState)("all");
+  const { open } = partitionTicketsByOpen(props.tickets);
+  const baseList = props.openOnly ? open : props.tickets;
+  const filtered = (0, import_react2.useMemo)(
+    () => baseList.filter((t) => matchesHighlight(t, highlight)),
+    [baseList, highlight]
+  );
+  const counts = (0, import_react2.useMemo)(() => {
+    const tally = { all: baseList.length, priority: 0, bugs: 0, stories: 0 };
+    for (const t of baseList) {
+      if (matchesHighlight(t, "priority")) {
+        tally.priority++;
+      }
+      if (matchesHighlight(t, "bugs")) {
+        tally.bugs++;
+      }
+      if (matchesHighlight(t, "stories")) {
+        tally.stories++;
+      }
+    }
+    return tally;
+  }, [baseList]);
+  if (!baseList.length) {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "agentic-jira-panel__empty", children: "No open tickets." });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "agentic-jira-list", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "agentic-highlight-bar", role: "toolbar", "aria-label": "Filter tickets", children: HIGHLIGHT_FILTERS.map((f) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: `agentic-highlight-btn${highlight === f.id ? " agentic-highlight-btn--active" : ""}`,
+        "aria-pressed": highlight === f.id,
+        onClick: () => setHighlight(f.id),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: f.label }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "agentic-highlight-btn__count", children: counts[f.id] })
+        ]
+      },
+      f.id
+    )) }),
+    !filtered.length ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "agentic-jira-panel__empty", children: "No tickets match this filter." }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { className: "agentic-jira-panel__list agentic-jira-panel__list--cards", children: filtered.map((t) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(JiraTicketCard, { ticket: t, isOpen: true, onSelect: () => props.onSelectOpen(t.key) }) }, t.key)) })
+  ] });
+}
+
+// src/components/jira/JiraWorkflowPlan.tsx
+var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+function PlanBlock(props) {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "agentic-jira-plan-block", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "agentic-jira-plan-block__title", children: props.title }),
+    props.children
+  ] });
+}
+function PlanList(props) {
+  const items = props.max ? props.items.slice(0, props.max) : props.items;
+  if (!items.length) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "agentic-jira-panel__muted", children: "\u2014" });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("ul", { className: "agentic-jira-plan-list", children: items.map((item, i) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("li", { children: item }, i)) });
+}
+function JiraWorkflowPlanView(props) {
+  const { plan, loading, minimal } = props;
+  if (loading || !plan) {
+    return null;
+  }
+  if (minimal) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("ol", { className: "agentic-jira-panel__steps", children: plan.implementationSteps.slice(0, 6).map((step, i) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("li", { children: step }, i)) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("section", { className: "agentic-jira-section", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: "Plan" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "agentic-jira-plan-compact__summary", children: plan.problemUnderstanding }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "agentic-jira-plan-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Scope", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.scope }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Likely files", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.likelyFiles, max: 12 }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Implementation steps", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.implementationSteps }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Commands to run", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.commandsToRun }) }),
+      plan.risks.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Risks", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.risks }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanBlock, { title: "Validation", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PlanList, { items: plan.validationCriteria }) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "agentic-jira-panel__muted", children: [
+      "Target status: ",
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: plan.recommendedTransitionStatus })
+    ] })
+  ] });
+}
+
+// src/components/jira/JiraChatBlock.tsx
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+function JiraActions(props) {
+  if (props.isRunning || !props.canRun) {
+    return null;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel__actions", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary", onClick: props.onRun, children: "Run" }),
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost", onClick: props.onCancel, children: "Cancel" })
+  ] });
+}
+function JiraChatBlock({ ui }) {
+  const chat = getChatService();
+  const canRun = !!(ui.plan && !ui.planLoading && ui.mode === "detail" && !ui.executing && ui.selectedTicket);
+  const isRunning = ui.executing || ui.mode === "executing";
+  if (ui.error) {
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--error", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__error", children: ui.error }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost agentic-btn--sm", onClick: () => void chat.refreshJiraTicketsInChat(), children: "Retry" })
+    ] });
+  }
+  if (ui.mode === "list" || ui.mode === "detail" && !ui.selectedTicket && ui.tickets.length) {
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel__head", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "agentic-jira-panel__title", children: "Open tickets" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+            title: "Refresh",
+            onClick: () => void chat.refreshJiraTicketsInChat(),
+            children: "Refresh"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "agentic-jira-panel__body", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        JiraTicketList,
+        {
+          tickets: ui.tickets,
+          openOnly: true,
+          onSelectOpen: (key) => void chat.pickJiraTicketInChat(key)
+        }
+      ) })
+    ] });
+  }
+  if (ui.selectedTicket) {
+    const t = ui.selectedTicket;
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "agentic-jira-panel__head", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "agentic-jira-panel__back", onClick: () => chat.showJiraTicketListInChat(), children: "\u2190 Tickets" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel__body", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-panel__ticket", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "agentic-jira-panel__key", children: t.key }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "agentic-jira-panel__summary", children: t.summary })
         ] }),
-        (ticket.assignee || ticket.updated) && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "agentic-jira-card__footer", children: [
-          ticket.assignee && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: ticket.assignee }),
-          ticket.updated && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "agentic-jira-card__date", children: ticket.updated })
+        ui.planLoading && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__status", children: "Planning\u2026" }),
+        !ui.planLoading && ui.plan && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(JiraWorkflowPlanView, { plan: ui.plan, loading: false, minimal: true }),
+        isRunning && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__status", children: "Running \u2014 check the editor for changes" }),
+        ui.mode === "complete" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__status agentic-jira-panel__status--ok", children: "Done" }),
+        ui.mode === "stalled" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__status agentic-jira-panel__status--warn", children: "Stopped without tools \u2014 use Continue with tools in the Composer JIRA panel." }),
+        ui.mode === "declined" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "agentic-jira-panel__status", children: "Cancelled" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+          JiraActions,
+          {
+            canRun,
+            isRunning,
+            onRun: () => void chat.acceptJiraWorkflowInChat(),
+            onCancel: () => chat.declineJiraWorkflowInChat()
+          }
+        )
+      ] })
+    ] });
+  }
+  return null;
+}
+
+// src/components/ReasoningPanel.tsx
+var import_react3 = __toESM(require_react());
+var import_jsx_runtime6 = __toESM(require_jsx_runtime());
+function ReasoningPanel({
+  message,
+  isLive
+}) {
+  const isComplete = message.state === "complete" || message.state === "error";
+  const [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+  const rawReasoning = (message.activityLines ?? []).filter((l) => l.kind === "reasoning");
+  const reasoningLines = [];
+  let prev = "";
+  for (const line of rawReasoning) {
+    const t = line.text.replace(/^Reasoning:\s*/i, "").trim();
+    if (t && t === prev) {
+      continue;
+    }
+    prev = t;
+    reasoningLines.push(line);
+  }
+  if (!reasoningLines.length) {
+    return null;
+  }
+  const isActive = isLive && message.state && !["complete", "error"].includes(message.state);
+  const preview = reasoningLines[reasoningLines.length - 1]?.text.replace(/^Reasoning:\s*/i, "") ?? "";
+  const started = message.createdAt;
+  const durationSec = isComplete && reasoningLines.length ? Math.max(1, Math.round((Date.now() - started) / 1e3)) : null;
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: `agentic-thought${isActive ? " agentic-thought--live" : ""}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-thought__toggle",
+        onClick: () => setCollapsed((c) => !c),
+        "aria-expanded": !collapsed,
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "agentic-thought__title", children: isActive ? "Thinking\u2026" : durationSec ? `Thought for ${durationSec}s` : "Thought" }),
+          collapsed && preview && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "agentic-thought__preview", children: [
+            preview.slice(0, 140),
+            preview.length > 140 ? "\u2026" : ""
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "agentic-thought__chevron", children: collapsed ? "\u25B8" : "\u25BE" })
+        ]
+      }
+    ),
+    !collapsed && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "agentic-thought__body", children: reasoningLines.map((line) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "agentic-thought__line", children: line.text.replace(/^Reasoning:\s*/i, "") }, line.id)) })
+  ] });
+}
+var import_jsx_runtime7 = __toESM(require_jsx_runtime());
+function fileName(path) {
+  return path.split(/[/\\]/).pop() ?? path;
+}
+function EditDiffCard({ toolCall }) {
+  if (toolCall.name !== "propose_file_edit" && toolCall.name !== "apply_file_edit") {
+    return null;
+  }
+  const path = String(toolCall.arguments.path ?? "");
+  const blocks = String(toolCall.arguments.searchReplaceBlocks ?? "");
+  const summary = blocks.trim() ? summarizeSearchReplaceBlocks(blocks, 12) : null;
+  const failed = toolCall.status === "failed";
+  const label = failed ? "Edit attempted" : toolCall.status === "complete" ? `Edit ${fileName(path)}` : `Editing ${fileName(path)}`;
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `agentic-edit-card${failed ? " agentic-edit-card--failed" : ""}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-edit-card__head",
+        onClick: () => path && void getChatService().openTouchedFile(path),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agentic-edit-card__label", children: label }),
+          summary && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "agentic-edit-card__stats", children: [
+            summary.added > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "agentic-edit-card__add", children: [
+              "+",
+              summary.added
+            ] }),
+            summary.removed > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "agentic-edit-card__del", children: [
+              "\u2212",
+              summary.removed
+            ] })
+          ] })
+        ]
+      }
+    ),
+    summary && summary.lines.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("pre", { className: "agentic-edit-card__diff", children: summary.lines.map((line, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+      "div",
+      {
+        className: `agentic-edit-card__line agentic-edit-card__line--${line.type}`,
+        children: [
+          line.type === "add" ? "+" : line.type === "remove" ? "\u2212" : " ",
+          line.text
+        ]
+      },
+      i
+    )) }),
+    failed && toolCall.resultPreview && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-edit-card__err", children: toolCall.resultPreview.slice(0, 120) })
+  ] });
+}
+
+// src/components/LiveStreamPanel.tsx
+var import_react4 = __toESM(require_react());
+var import_jsx_runtime8 = __toESM(require_jsx_runtime());
+function LiveStreamPanel({
+  message,
+  runActive = false
+}) {
+  const bottomRef = (0, import_react4.useRef)(null);
+  (0, import_react4.useEffect)(() => {
+    bottomRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [message?.streamRaw, message?.content]);
+  if (!message || message.role !== "assistant" || !runActive) {
+    return null;
+  }
+  if (message.state === "complete" || message.state === "error") {
+    return null;
+  }
+  const raw = message.streamRaw ?? "";
+  const parts = raw ? splitStreamContent(raw) : null;
+  const liveText = parts?.working || parts?.answer || message.content || "";
+  if (message.state === "waiting_for_tool") {
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-live-stream agentic-live-stream--tool", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-live-stream__pulse", "aria-hidden": true }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-live-stream__label", children: "Running tool\u2026" })
+    ] });
+  }
+  const isStreaming = message.state === "streaming" || message.state === "thinking";
+  if (!isStreaming && !liveText) {
+    return null;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-live-stream", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-live-stream__body", children: [
+      liveText || /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-live-stream__placeholder", children: "Working\u2026" }),
+      isStreaming && liveText && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-live-stream__cursor", "aria-hidden": true })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { ref: bottomRef })
+  ] });
+}
+
+// src/components/WorkflowSummaryPanel.tsx
+var import_react5 = __toESM(require_react());
+var import_jsx_runtime9 = __toESM(require_jsx_runtime());
+var STATUS_LABEL = {
+  success: "Done",
+  partial: "Partial",
+  failed: "Needs edits",
+  stalled: "No tools run"
+};
+function WorkflowSummaryPanel({ summary }) {
+  const [showDetails, setShowDetails] = (0, import_react5.useState)(false);
+  const isOk = summary.completionKind === "success";
+  const outcomeLine = summary.outcome.split("\n")[0]?.replace(/\*\*/g, "") ?? "";
+  const extended = summary;
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+    "section",
+    {
+      className: `agentic-run-outcome agentic-run-outcome--${summary.completionKind}`,
+      "aria-label": "Run outcome",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "agentic-run-outcome__row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "agentic-run-outcome__status", children: STATUS_LABEL[summary.completionKind] }),
+          extended.qualityScore !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("span", { className: "agentic-run-outcome__score", children: [
+            "Quality ",
+            extended.qualityScore,
+            "/100"
+          ] }),
+          extended.verificationResult && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("span", { className: "agentic-run-outcome__verify", children: [
+            "Verify: ",
+            extended.verificationResult
+          ] }),
+          !isOk && outcomeLine && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "agentic-run-outcome__message", children: outcomeLine.slice(0, 160) }),
+          (summary.actions.length > 0 || summary.filesTouched.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "agentic-run-outcome__details-btn",
+              onClick: () => setShowDetails((d) => !d),
+              children: showDetails ? "Hide" : "Details"
+            }
+          )
+        ] }),
+        (summary.completionKind === "failed" || summary.completionKind === "stalled" || summary.completionKind === "partial") && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "agentic-run-outcome__actions", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn-primary agentic-btn--sm",
+            onClick: () => void getChatService().continueAfterStall(),
+            children: "Continue"
+          }
+        ) }),
+        showDetails && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "agentic-run-outcome__details", children: [
+          summary.actions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("ul", { className: "agentic-run-outcome__tools", children: summary.actions.map((a, i) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("li", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: `agentic-run-outcome__tool-status agentic-run-outcome__tool-status--${a.status}`, children: a.status }),
+            a.label
+          ] }, i)) }),
+          summary.filesTouched.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "agentic-run-outcome__files", children: summary.filesTouched.map((f) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("code", { children: f.path.split(/[/\\]/).pop() }, f.path)) })
         ] })
       ]
     }
   );
 }
 
-// src/components/jira/JiraWorkflowPlan.tsx
-var import_jsx_runtime5 = __toESM(require_jsx_runtime());
-function PlanSection(props) {
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-plan-block", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "agentic-jira-plan-block__title", children: props.title }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "agentic-jira-plan-block__body", children: props.children })
-  ] });
-}
-function PlanList(props) {
-  if (!props.items.length) return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "agentic-muted", children: "\u2014" });
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("ul", { className: "agentic-jira-plan-list", children: props.items.map((item, i) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("li", { children: item }, i)) });
-}
-function JiraWorkflowPlanView(props) {
-  const { plan, loading } = props;
-  if (loading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("section", { className: "agentic-jira-section", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { children: "Workflow plan" }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "agentic-jira-loading", children: "Generating structured plan\u2026" })
-    ] });
+// src/components/DecisionBlock.tsx
+var import_jsx_runtime10 = __toESM(require_jsx_runtime());
+function DecisionBlock({ decision }) {
+  if (decision.resolved) {
+    return null;
   }
-  if (!plan) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("section", { className: "agentic-jira-section", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { children: "Workflow plan" }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "agentic-jira-plan-grid", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Problem understanding", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: plan.problemUnderstanding }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Scope", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.scope }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Affected areas", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.affectedAreas }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Likely files", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.likelyFiles }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Commands to run", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.commandsToRun }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Risks", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.risks }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Implementation steps", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.implementationSteps }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Validation criteria", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanList, { items: plan.validationCriteria }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(PlanSection, { title: "Recommended JIRA transition", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "agentic-pill agentic-pill--accent", children: plan.recommendedTransitionStatus }) })
-    ] })
-  ] });
-}
-
-// src/components/jira/JiraWorkflowStream.tsx
-var import_react3 = __toESM(require_react());
-var import_jsx_runtime6 = __toESM(require_jsx_runtime());
-function JiraWorkflowStream(props) {
-  const endRef = (0, import_react3.useRef)(null);
-  (0, import_react3.useEffect)(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [props.events.length]);
-  if (!props.events.length) {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "agentic-jira-section", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "Live stream" }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "agentic-jira-empty", children: "Workflow events will appear here step by step." })
-    ] });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "agentic-jira-section", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "Live stream" }),
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("ul", { className: "agentic-jira-timeline", children: [
-      props.events.map((evt) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { className: `agentic-jira-timeline__item agentic-jira-timeline__item--${evt.level}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "agentic-jira-timeline__dot" }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "agentic-jira-timeline__content", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "agentic-jira-timeline__msg", children: evt.message }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "agentic-jira-timeline__meta", children: [
-            evt.ticketKey && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: evt.ticketKey }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: new Date(evt.timestamp).toLocaleTimeString() })
-          ] })
-        ] })
-      ] }, evt.id)),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { ref: endRef })
-    ] })
-  ] });
-}
-
-// src/components/jira/JiraChatBlock.tsx
-var import_jsx_runtime7 = __toESM(require_jsx_runtime());
-function JiraChatBlock({ ui }) {
   const chat = getChatService();
-  if (ui.error) {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agentic-jira-chat", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-error", children: ui.error }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+  const onAction = (actionId) => {
+    if (decision.kind === "jira_workflow") {
+      switch (actionId) {
+        case "proceed":
+          void chat.acceptJiraWorkflowInChat();
+          break;
+        case "decline":
+          chat.declineJiraWorkflowInChat();
+          break;
+        case "regenerate":
+          void chat.regenerateJiraPlanInChat();
+          break;
+      }
+      return;
+    }
+    if (decision.kind === "tool_approval" && decision.approvalId) {
+      if (actionId === "approve") {
+        chat.approveEdit(decision.approvalId);
+      } else if (actionId === "reject") {
+        chat.rejectEdit(decision.approvalId);
+      }
+      return;
+    }
+    if (decision.kind === "plan_execute" || decision.kind === "plan_exploration") {
+      const action = decision.actions.find((a) => a.id === actionId);
+      if (action?.sendMessage) {
+        if (actionId === "execute_plan") {
+          void chat.executeApprovedPlan();
+          return;
+        }
+        chat.resolvePlanDecision();
+        void chat.sendUserMessage(action.sendMessage);
+        return;
+      }
+      if (actionId === "execute_plan") {
+        void chat.executeApprovedPlan();
+      } else if (actionId === "revise_plan") {
+        chat.resolvePlanDecision();
+        void chat.sendUserMessage("/plan Revise the plan based on my feedback: ");
+      }
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "agentic-decision", role: "group", "aria-label": decision.title, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "agentic-decision__title", children: decision.title }),
+    decision.hint && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "agentic-decision__hint", children: decision.hint }),
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "agentic-decision__actions", children: decision.actions.map((a) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+      "button",
+      {
+        type: "button",
+        className: a.variant === "primary" ? "agentic-btn agentic-btn-primary" : a.variant === "secondary" ? "agentic-btn" : "agentic-btn agentic-btn-ghost",
+        onClick: () => onAction(a.id),
+        children: a.label
+      },
+      a.id
+    )) })
+  ] });
+}
+
+// src/components/PlanProposalPanel.tsx
+var import_react6 = __toESM(require_react());
+var import_jsx_runtime11 = __toESM(require_jsx_runtime());
+function onPlanAction(decision, actionId) {
+  const chat = getChatService();
+  const action = decision?.actions.find((a) => a.id === actionId);
+  if (action?.sendMessage) {
+    if (action.id === "execute_plan") {
+      void chat.executeApprovedPlan();
+      return;
+    }
+    chat.resolvePlanDecision();
+    void chat.sendUserMessage(action.sendMessage);
+    return;
+  }
+  if (actionId === "execute_plan") {
+    void chat.executeApprovedPlan();
+  } else if (actionId === "revise_plan") {
+    chat.resolvePlanDecision();
+    void chat.sendUserMessage("/plan Revise the plan based on my feedback: ");
+  }
+}
+function PlanProposalPanel({
+  proposal,
+  decision
+}) {
+  const [expanded, setExpanded] = (0, import_react6.useState)(() => {
+    const init = {};
+    proposal.sections.forEach((_, i) => {
+      init[i] = i < 2;
+    });
+    return init;
+  });
+  const pending = decision && !decision.resolved;
+  const actions = pending ? decision.actions : [];
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "agentic-plan-card", "aria-label": "Improvement plan", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("header", { className: "agentic-plan-card__header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "agentic-plan-card__badge", children: "Plan" }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h3", { className: "agentic-plan-card__title", children: "Repository improvement plan" })
+    ] }),
+    proposal.leadIn && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "agentic-plan-card__lead", children: proposal.leadIn }),
+    proposal.sections.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "agentic-plan-card__sections", children: proposal.sections.map((section, i) => {
+      const open = expanded[i] ?? false;
+      return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "agentic-plan-card__section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-plan-card__section-head",
+            "aria-expanded": open,
+            onClick: () => setExpanded((e) => ({ ...e, [i]: !open })),
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "agentic-plan-card__section-chevron", "aria-hidden": true, children: open ? "\u25BE" : "\u25B8" }),
+              /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "agentic-plan-card__section-title", children: section.heading })
+            ]
+          }
+        ),
+        open && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "agentic-plan-card__section-body", children: [
+          section.body && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { children: section.body }),
+          section.bullets.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("ul", { children: section.bullets.map((b, j) => /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("li", { children: b }, j)) })
+        ] })
+      ] }, `${section.heading}-${i}`);
+    }) }),
+    (proposal.closingPrompt || actions.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("footer", { className: "agentic-plan-card__footer", children: [
+      proposal.closingPrompt && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "agentic-plan-card__question", children: proposal.closingPrompt }),
+      actions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "agentic-plan-card__choices", role: "group", "aria-label": "Plan actions", children: actions.map((a) => /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
         "button",
         {
           type: "button",
-          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
-          onClick: () => void chat.refreshJiraTicketsInChat(),
-          children: "Retry"
-        }
-      )
-    ] });
-  }
-  if (ui.mode === "list" || ui.mode === "detail" && !ui.selectedTicket && ui.tickets.length) {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agentic-jira-chat", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-chat__toolbar", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost agentic-btn--sm", onClick: () => void chat.refreshJiraTicketsInChat(), children: "Refresh" }) }),
-      ui.tickets.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-empty", children: "No open tickets returned. Check MCP connection and JQL permissions." }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-cards agentic-jira-cards--chat", children: ui.tickets.map((t) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-        JiraTicketCard,
-        {
-          ticket: t,
-          selected: ui.selectedTicket?.key === t.key,
-          onSelect: () => void chat.pickJiraTicketInChat(t.key)
+          className: a.variant === "primary" ? "agentic-btn agentic-btn-primary agentic-plan-card__choice" : a.variant === "secondary" ? "agentic-btn agentic-plan-card__choice" : "agentic-btn agentic-btn-ghost agentic-plan-card__choice",
+          onClick: () => onPlanAction(decision, a.id),
+          children: a.label
         },
-        t.key
+        a.id
       )) })
-    ] });
-  }
-  if (ui.selectedTicket) {
-    const t = ui.selectedTicket;
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agentic-jira-chat", children: [
-      ui.tickets.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-chat__toolbar", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost agentic-btn--sm", onClick: () => chat.showJiraTicketListInChat(), children: "Back to list" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agentic-jira-detail-card agentic-jira-detail-card--chat", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-detail-card__key", children: t.key }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-detail-card__summary", children: t.summary }),
-        t.status && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agentic-pill", children: t.status }),
-        t.description && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agentic-jira-description", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("pre", { children: t.description.slice(0, 2e3) }) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(JiraWorkflowPlanView, { plan: ui.plan, loading: ui.planLoading }),
-      ui.plan && !ui.planLoading && ui.mode !== "declined" && ui.mode !== "complete" && !ui.executing && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agentic-jira-decisions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary", onClick: () => void chat.acceptJiraWorkflowInChat(), children: "Accept workflow" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "agentic-btn", onClick: () => void chat.regenerateJiraPlanInChat(), children: "Regenerate plan" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost", onClick: () => chat.declineJiraWorkflowInChat(), children: "Decline" })
-      ] }),
-      ui.events.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(JiraWorkflowStream, { events: ui.events })
-    ] });
-  }
-  return null;
-}
-
-// src/components/ChatMessage.tsx
-var import_jsx_runtime8 = __toESM(require_jsx_runtime());
-function ChatMessage({
-  message,
-  isLive
-}) {
-  const isUser = message.role === "user";
-  if (isUser) {
-    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agentic-turn", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-card agentic-card-user", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agentic-role", children: "You" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agentic-message-body", children: message.content })
-    ] }) });
-  }
-  const hasJira = !!message.jiraChat;
-  const showAnswer = message.content.length > 0 || message.state === "complete" || hasJira;
-  const isStreamingAnswer = isLive && message.state === "streaming";
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-turn", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ActivityFeed, { message }),
-    (showAnswer || isLive && message.state !== "error" && message.state !== "streaming") && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-card agentic-card-assistant", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agentic-role", children: "Assistant" }),
-      (message.content || isLive) && message.state !== "error" && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agentic-message-body", children: [
-        message.content || (isLive ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-answer-placeholder", children: "Formulating response\u2026" }) : null),
-        isStreamingAnswer && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agentic-answer-cursor", "aria-hidden": true })
-      ] }),
-      hasJira && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(JiraChatBlock, { ui: message.jiraChat })
-    ] }),
-    message.toolCalls?.map((tc) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ToolCallCard, { toolCall: tc }, tc.id)),
-    message.state === "error" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agentic-error-banner", children: message.content || "Something went wrong." })
+    ] })
   ] });
 }
 
+// src/components/AgentTurnView.tsx
+var import_jsx_runtime12 = __toESM(require_jsx_runtime());
+function exploreSummary(toolCalls) {
+  if (!toolCalls?.length) {
+    return null;
+  }
+  let reads = 0;
+  let searches = 0;
+  let edits = 0;
+  for (const tc of toolCalls) {
+    if (tc.name === "read_file") {
+      reads++;
+    } else if (["grep", "search_files", "list_files", "list_workspace", "get_symbols"].includes(tc.name)) {
+      searches++;
+    } else if (tc.name === "propose_file_edit" || tc.name === "apply_file_edit") {
+      edits++;
+    }
+  }
+  const parts = [];
+  if (reads) {
+    parts.push(`${reads} file${reads === 1 ? "" : "s"}`);
+  }
+  if (searches) {
+    parts.push(`${searches} search${searches === 1 ? "" : "es"}`);
+  }
+  if (edits) {
+    parts.push(`${edits} edit${edits === 1 ? "" : "s"}`);
+  }
+  if (!parts.length) {
+    return null;
+  }
+  return `Explored ${parts.join(", ")}`;
+}
+function cleanAnswer(content) {
+  return content.replace(/^## Workflow summary[\s\S]*?---\s*/m, "").replace(/^\*\*Status:\*\*[^\n]*\n+/m, "").trim();
+}
+function AgentTurnView({
+  message,
+  isLive,
+  voidLike
+}) {
+  const toolCalls = message.toolCalls ?? [];
+  const editByPath = /* @__PURE__ */ new Map();
+  for (const tc of toolCalls) {
+    if (tc.name === "propose_file_edit" || tc.name === "apply_file_edit") {
+      const p = String(tc.arguments.path ?? tc.id);
+      editByPath.set(p, tc);
+    }
+  }
+  const editCalls = [...editByPath.values()];
+  const explore = exploreSummary(toolCalls);
+  const answer = cleanAnswer(message.content);
+  const planProposal = answer ? parsePlanProposalContent(answer) : null;
+  const showSummary = !voidLike && message.workflowSummary && (message.state === "complete" || message.state === "error");
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("article", { className: `agentic-turn${isLive ? " agentic-turn--live" : ""}${voidLike ? " agentic-turn--void-like" : ""}`, children: [
+    !voidLike && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(ReasoningPanel, { message, isLive }),
+    !voidLike && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(LiveStreamPanel, { message, runActive: !!isLive }),
+    message.decision && !message.decision.resolved && message.decision.kind !== "plan_exploration" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(DecisionBlock, { decision: message.decision }),
+    voidLike && isLive && (message.content || message.streamRaw) && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "agentic-turn__streaming", children: (message.content || message.streamRaw || "").trim() }),
+    !voidLike && explore && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "agentic-turn__explore", children: explore }),
+    editCalls.map((tc) => /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(EditDiffCard, { toolCall: tc }, tc.id)),
+    planProposal && message.state !== "thinking" ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(PlanProposalPanel, { proposal: planProposal, decision: message.decision }) : answer && message.state !== "thinking" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "agentic-turn__answer", children: answer }),
+    showSummary && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(WorkflowSummaryPanel, { summary: message.workflowSummary }),
+    message.state === "error" && !answer && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "agentic-turn__error", children: message.content || "Something went wrong." })
+  ] });
+}
+
+// src/components/ChatMessage.tsx
+var import_jsx_runtime13 = __toESM(require_jsx_runtime());
+function ChatMessage({
+  message,
+  isLive,
+  voidLike
+}) {
+  const isUser = message.role === "user";
+  const hasJira = !!message.jiraChat;
+  if (isUser) {
+    const trimmed = message.content.trim();
+    if (/^(tickets|show open jira|jira)$/i.test(trimmed)) {
+      return null;
+    }
+    if (/^\[Orchestrator\]/i.test(trimmed) || /^\[Execute approved plan\]/i.test(trimmed)) {
+      return null;
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("article", { className: "agentic-chat-turn agentic-chat-turn--user", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "agentic-chat-bubble agentic-chat-bubble--user", children: message.content }) });
+  }
+  if (hasJira) {
+    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("article", { className: "agentic-chat-turn agentic-chat-turn--assistant", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(JiraChatBlock, { ui: message.jiraChat }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(AgentTurnView, { message, isLive, voidLike });
+}
+
 // src/components/Composer.tsx
-var import_react4 = __toESM(require_react());
-var import_jsx_runtime9 = __toESM(require_jsx_runtime());
+var import_react7 = __toESM(require_react());
+var import_jsx_runtime14 = __toESM(require_jsx_runtime());
 function Composer({
   onSend,
   onStop,
@@ -19958,142 +20591,627 @@ function Composer({
   includeActiveFile,
   includeSelection,
   autoApplyEdits,
+  agentModeId,
+  onAgentModeChange,
   onToggleActiveFile,
   onToggleSelection,
-  onToggleAutoApply,
-  jiraWorkflowEnabled,
-  onJiraListTickets
+  onToggleAutoApply
 }) {
-  const [text, setText] = (0, import_react4.useState)("");
-  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "agentic-composer", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-      "textarea",
-      {
-        value: text,
-        onChange: (e) => setText(e.target.value),
-        placeholder: "Ask about your codebase\u2026 (e.g. \u201Cshow open JIRA tickets\u201D)",
-        onKeyDown: (e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            if (text.trim()) {
-              onSend(text.trim());
-              setText("");
-            }
-          }
-        }
+  const [text, setText] = (0, import_react7.useState)("");
+  const [picker, setPicker] = (0, import_react7.useState)(null);
+  const [pickerIndex, setPickerIndex] = (0, import_react7.useState)(0);
+  const [mentionHits, setMentionHits] = (0, import_react7.useState)([]);
+  const { models, selection } = useVoidChatModels();
+  const skills = listAgentSkills();
+  const inputRef = (0, import_react7.useRef)(null);
+  const chips = [
+    { id: "file", label: "File", active: includeActiveFile, onToggle: onToggleActiveFile },
+    { id: "selection", label: "Selection", active: includeSelection, onToggle: onToggleSelection },
+    { id: "auto", label: "Auto-apply", active: autoApplyEdits, onToggle: onToggleAutoApply }
+  ];
+  const selectedModelKey = selection ? `${selection.providerName}::${selection.modelName}` : "";
+  const updatePicker = (0, import_react7.useCallback)((value, cursor) => {
+    const before = value.slice(0, cursor);
+    const slashMatch = before.match(/(?:^|\s)\/([\w-]*)$/);
+    if (slashMatch) {
+      setPicker("slash");
+      setPickerIndex(0);
+      return;
+    }
+    const mentionMatch = before.match(/(?:^|\s)@([\w./\\-]*)$/);
+    if (mentionMatch) {
+      setPicker("mention");
+      setPickerIndex(0);
+      const q = mentionMatch[1] ?? "";
+      void getChatService().searchComposerContext(q).then((hits) => setMentionHits(hits.slice(0, 8)));
+      return;
+    }
+    setPicker(null);
+    setMentionHits([]);
+  }, []);
+  const applySkill = (skill) => {
+    const base = text.replace(/(?:^|\s)\/[\w-]*$/, "").trimEnd();
+    const next = `${base}${base ? " " : ""}${skill.slash} `;
+    setText(next);
+    setPicker(null);
+    inputRef.current?.focus();
+  };
+  const applyMention = (path) => {
+    const rel = path.split(/[/\\]/).slice(-3).join("/");
+    const base = text.replace(/(?:^|\s)@[\w./\\-]*$/, "").trimEnd();
+    const next = `${base}${base ? " " : ""}@${rel} `;
+    setText(next);
+    setPicker(null);
+    inputRef.current?.focus();
+  };
+  const submit = () => {
+    const trimmed = text.trim();
+    if (!trimmed || isRunning) {
+      return;
+    }
+    onSend(trimmed);
+    setText("");
+    setPicker(null);
+  };
+  const filteredSkills = skills.filter(
+    (s) => !picker || picker !== "slash" || s.slash.slice(1).toLowerCase().startsWith((text.match(/\/([\w-]*)$/)?.[1] ?? "").toLowerCase())
+  );
+  (0, import_react7.useEffect)(() => {
+    if (!picker) {
+      return;
+    }
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setPicker(null);
       }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "agentic-toggles", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { type: "checkbox", checked: includeActiveFile, onChange: onToggleActiveFile }),
-        " ",
-        "Include active file"
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { type: "checkbox", checked: includeSelection, onChange: onToggleSelection }),
-        " ",
-        "Include selection"
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { type: "checkbox", checked: autoApplyEdits, onChange: onToggleAutoApply }),
-        " ",
-        "Auto-apply edits"
-      ] })
-    ] }),
-    onJiraListTickets && jiraWorkflowEnabled !== false && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "agentic-composer-jira", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "agentic-composer-jira__label", children: "JIRA" }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [picker]);
+  const SendIcon = () => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("svg", { className: "agentic-composer-send-icon", width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", "aria-hidden": true, children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    "path",
+    {
+      d: "M12 5v14M12 5l-5.5 5.5M12 5l5.5 5.5",
+      stroke: "currentColor",
+      strokeWidth: "2",
+      strokeLinecap: "round",
+      strokeLinejoin: "round"
+    }
+  ) });
+  const ChipCheck = () => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("svg", { className: "agentic-chat-chip__check", width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", "aria-hidden": true, children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("path", { d: "M5 12l4 4L19 6", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("footer", { className: "agentic-chat-composer", children: [
+    picker && /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-composer-picker", role: "listbox", children: [
+      picker === "slash" && filteredSkills.map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)(
         "button",
         {
           type: "button",
-          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
-          disabled: isRunning,
-          onClick: onJiraListTickets,
-          children: "Show open tickets"
+          className: `agentic-composer-picker__item${i === pickerIndex ? " agentic-composer-picker__item--active" : ""}`,
+          onMouseDown: (e) => {
+            e.preventDefault();
+            applySkill(s);
+          },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-picker__cmd", children: s.slash }),
+            /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-picker__label", children: s.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-picker__hint", children: s.description })
+          ]
+        },
+        s.id
+      )),
+      picker === "mention" && mentionHits.map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+        "button",
+        {
+          type: "button",
+          className: `agentic-composer-picker__item${i === pickerIndex ? " agentic-composer-picker__item--active" : ""}`,
+          onMouseDown: (e) => {
+            e.preventDefault();
+            applyMention(h.path);
+          },
+          children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-picker__label", children: h.path })
+        },
+        h.path
+      )),
+      picker === "mention" && mentionHits.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-composer-picker__empty", children: "Type to search files\u2026" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-composer-dock", children: /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-chat-composer__surface", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-composer-toolbar", role: "toolbar", "aria-label": "Agent controls", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("label", { className: "agentic-composer-model", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-model__label", "aria-hidden": true, children: "Model" }),
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-composer-model__select-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)(
+            "select",
+            {
+              className: "agentic-composer-select",
+              value: selectedModelKey,
+              disabled: isRunning || !models.length,
+              onChange: (e) => {
+                const [providerName, modelName] = e.target.value.split("::");
+                if (providerName && modelName) {
+                  setVoidChatModel(providerName, modelName);
+                }
+              },
+              "aria-label": "Chat model",
+              children: [
+                !models.length && /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("option", { value: "", children: "No models" }),
+                models.map((m) => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("option", { value: `${m.providerName}::${m.modelName}`, children: m.label }, `${m.providerName}::${m.modelName}`))
+              ]
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-composer-mode-switch", role: "group", "aria-label": "Agent mode", children: COMPOSER_AGENT_MODES.map((mode) => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+          "button",
+          {
+            type: "button",
+            className: `agentic-mode-pill${agentModeId === mode.id ? " agentic-mode-pill--active" : ""}`,
+            title: mode.description,
+            disabled: isRunning,
+            "aria-pressed": agentModeId === mode.id,
+            onClick: () => onAgentModeChange(mode.id),
+            children: mode.shortLabel
+          },
+          mode.id
+        )) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-composer-input-wrap", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+          "textarea",
+          {
+            ref: inputRef,
+            className: "agentic-chat-composer__input",
+            value: text,
+            onChange: (e) => {
+              setText(e.target.value);
+              updatePicker(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            },
+            onClick: (e) => updatePicker(text, e.currentTarget.selectionStart ?? text.length),
+            placeholder: "Message the agent\u2026",
+            rows: 2,
+            onKeyDown: (e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !picker) {
+                e.preventDefault();
+                submit();
+              }
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-composer-input__actions", children: isRunning ? /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-chat-composer__send agentic-chat-composer__send--stop",
+            onClick: onStop,
+            children: "Stop"
+          }
+        ) : /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+          "button",
+          {
+            type: "button",
+            className: `agentic-chat-composer__send${text.trim() ? " agentic-chat-composer__send--ready" : ""}`,
+            disabled: !text.trim(),
+            onClick: submit,
+            "aria-label": "Send message",
+            children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(SendIcon, {})
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-chat-composer__footer", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-chat-composer__chips", role: "group", "aria-label": "Context", children: chips.map((chip) => /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)(
+          "button",
+          {
+            type: "button",
+            className: `agentic-chat-chip${chip.active ? " agentic-chat-chip--on" : ""}`,
+            "aria-pressed": chip.active,
+            onClick: chip.onToggle,
+            children: [
+              chip.active ? /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(ChipCheck, {}) : /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-chat-chip__indicator", "aria-hidden": true }),
+              /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-chat-chip__label", children: chip.label })
+            ]
+          },
+          chip.id
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("p", { className: "agentic-composer-hint", "aria-hidden": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("kbd", { className: "agentic-kbd", children: "\u21B5" }),
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { children: "send" }),
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "agentic-composer-hint__sep", children: "\xB7" }),
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("kbd", { className: "agentic-kbd", children: "\u21E7\u21B5" }),
+          /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { children: "new line" })
+        ] })
+      ] })
+    ] }) })
+  ] });
+}
+
+// src/components/ChatBottomBar.tsx
+var import_react8 = __toESM(require_react());
+var import_jsx_runtime15 = __toESM(require_jsx_runtime());
+function fileName2(path) {
+  return path.split(/[/\\]/).pop() ?? path;
+}
+function ChatBottomBar({
+  requests
+}) {
+  const [filesOpen, setFilesOpen] = (0, import_react8.useState)(false);
+  const chat = getChatService();
+  const pending = requests.filter((r) => r.decision === "pending");
+  const fileItems = pending.flatMap(
+    (r) => (r.items?.length ? r.items : [{
+      filePath: r.filePath,
+      title: r.title,
+      toolCallId: r.toolCallId
+    }]).map((item) => ({
+      path: item.filePath ?? "",
+      approvalId: r.id
+    }))
+  ).filter((f) => f.path);
+  const uniquePaths = [...new Set(fileItems.map((f) => f.path))];
+  if (!pending.length) {
+    return null;
+  }
+  const firstId = pending[0]?.id;
+  return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "agentic-bottom-bar", role: "region", "aria-label": "Review changes", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-bottom-bar__files",
+        onClick: () => setFilesOpen((o) => !o),
+        "aria-expanded": filesOpen,
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "agentic-bottom-bar__chevron", children: filesOpen ? "\u25BE" : "\u25B8" }),
+          uniquePaths.length,
+          " file",
+          uniquePaths.length === 1 ? "" : "s"
+        ]
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "agentic-bottom-bar__actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-btn agentic-btn--soft agentic-btn--sm",
+          onClick: () => {
+            for (const r of pending) {
+              chat.rejectEdit(r.id);
+            }
+          },
+          children: "Undo all"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-btn agentic-btn--soft agentic-btn--sm",
+          onClick: () => {
+            for (const r of pending) {
+              chat.approveEdit(r.id);
+            }
+          },
+          children: "Keep all"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-btn agentic-btn-primary agentic-btn--sm",
+          onClick: () => firstId && chat.approveEdit(firstId),
+          children: "Review"
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { style: { display: "flex", gap: 8 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-        "button",
-        {
-          type: "button",
-          className: "agentic-btn agentic-btn-primary",
-          disabled: !text.trim() || isRunning,
-          onClick: () => {
-            onSend(text.trim());
-            setText("");
-          },
-          children: "Send"
-        }
-      ),
-      isRunning && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("button", { type: "button", className: "agentic-btn", onClick: onStop, children: "Stop" })
-    ] })
-  ] });
-}
-
-// src/components/ContextPills.tsx
-var import_jsx_runtime10 = __toESM(require_jsx_runtime());
-function ContextPills({ labels }) {
-  if (!labels.length) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "agentic-pills", children: labels.map((l) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { className: "agentic-pill", children: l }, l)) });
-}
-
-// src/components/ApprovalPanel.tsx
-var import_jsx_runtime11 = __toESM(require_jsx_runtime());
-function ApprovalPanel({
-  requests,
-  onApprove,
-  onReject
-}) {
-  const pending = requests.filter((r) => r.decision === "pending");
-  if (!pending.length) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "agentic-approval", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { style: { fontWeight: 600, marginBottom: 8 }, children: "Approval required" }),
-    pending.map((r) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { style: { marginBottom: 10 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { children: r.title }),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { style: { fontSize: 12, opacity: 0.85 }, children: r.description }),
-      r.preview && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("pre", { style: { fontSize: 11, maxHeight: 120, overflow: "auto" }, children: r.preview }),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { style: { display: "flex", gap: 8, marginTop: 8 }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary", onClick: () => onApprove(r.id), children: "Approve" }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { type: "button", className: "agentic-btn", onClick: () => onReject(r.id), children: "Reject" })
-      ] })
-    ] }, r.id))
-  ] });
-}
-
-// src/components/CheckpointBanner.tsx
-var import_jsx_runtime12 = __toESM(require_jsx_runtime());
-function CheckpointBanner({ checkpoints }) {
-  const latest = checkpoints[checkpoints.length - 1];
-  if (!latest) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "agentic-checkpoint", children: [
-    "Checkpoint: ",
-    latest.label,
-    " (",
-    new Date(latest.createdAt).toLocaleTimeString(),
-    ")"
+    filesOpen && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("ul", { className: "agentic-bottom-bar__list", children: uniquePaths.map((p) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-bottom-bar__file",
+        onClick: () => void chat.openTouchedFile(p),
+        children: fileName2(p)
+      }
+    ) }, p)) })
   ] });
 }
 
 // src/components/AgenticSettingsPanel.tsx
-var import_react5 = __toESM(require_react());
-var import_jsx_runtime13 = __toESM(require_jsx_runtime());
-function AgenticSettingsPanel() {
-  const [open, setOpen] = (0, import_react5.useState)(false);
-  const [settings, setSettings] = (0, import_react5.useState)(null);
-  const load = () => {
-    const svc = getAgenticSettingsService();
-    setSettings({ ...svc.settings });
+var import_react11 = __toESM(require_react());
+
+// src/components/AgentCapabilitiesPanel.tsx
+var import_jsx_runtime16 = __toESM(require_jsx_runtime());
+var PROFILE_DEFAULTS_FOR_UI = {
+  standard: resolveAgentCapabilities({ capabilityProfile: "standard", capabilityOverrides: {}, enableJiraWorkflow: true }),
+  pro: resolveAgentCapabilities({ capabilityProfile: "pro", capabilityOverrides: {}, enableJiraWorkflow: true }),
+  autonomous: resolveAgentCapabilities({ capabilityProfile: "autonomous", capabilityOverrides: {}, enableJiraWorkflow: true })
+};
+var PROFILES = ["standard", "pro", "autonomous"];
+function AgentCapabilitiesPanel({
+  settings,
+  onChange
+}) {
+  const resolved = resolveAgentCapabilities(settings);
+  const profileDefaults = PROFILE_DEFAULTS_FOR_UI[settings.capabilityProfile];
+  const toggleOverride = (id, enabled) => {
+    const overrides = { ...settings.capabilityOverrides };
+    if (enabled === profileDefaults[id]) {
+      delete overrides[id];
+    } else {
+      overrides[id] = enabled;
+    }
+    onChange({ capabilityOverrides: overrides });
   };
-  if (!open) {
-    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost", onClick: () => {
-      load();
-      setOpen(true);
-    }, children: "Runtime settings" });
+  const isCapabilityOn = (id) => resolved[id];
+  return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { className: "agentic-capabilities", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h3", { className: "agentic-capabilities__heading", children: "Agent capabilities" }),
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "agentic-capabilities__intro", children: "Choose a profile for state-of-the-art behavior. Pro is recommended for daily coding; Autonomous pairs best with Fast approval mode." }),
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "agentic-capabilities__profiles", role: "radiogroup", "aria-label": "Capability profile", children: PROFILES.map((profile) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
+      "button",
+      {
+        type: "button",
+        role: "radio",
+        "aria-checked": settings.capabilityProfile === profile,
+        className: `agentic-capabilities__profile${settings.capabilityProfile === profile ? " agentic-capabilities__profile--active" : ""}`,
+        onClick: () => onChange({ capabilityProfile: profile, capabilityOverrides: {} }),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "agentic-capabilities__profile-name", children: AGENT_CAPABILITY_PROFILE_LABELS[profile] }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { className: "agentic-capabilities__profile-desc", children: [
+            profile === "standard" && "Focused reads, safe edits, MCP & JIRA",
+            profile === "pro" && "Parallel tools, plan/verify, terminal, deep context",
+            profile === "autonomous" && "Maximum autonomy & longest memory"
+          ] })
+        ]
+      },
+      profile
+    )) }),
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("ul", { className: "agentic-capabilities__list", children: AGENT_CAPABILITY_CATALOG.map((def) => {
+      const on = isCapabilityOn(def.id);
+      return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("li", { className: "agentic-capabilities__item", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("label", { className: "agentic-capabilities__item-label", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: on,
+            disabled: def.id === "jiraWorkflow" && !settings.enableJiraWorkflow,
+            onChange: (e) => toggleOverride(def.id, e.target.checked)
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("strong", { children: def.label }),
+          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "agentic-capabilities__item-desc", children: def.description })
+        ] })
+      ] }) }, def.id);
+    }) })
+  ] });
+}
+
+// src/components/AgentMetricsPanel.tsx
+var import_react9 = __toESM(require_react());
+var import_jsx_runtime17 = __toESM(require_jsx_runtime());
+function pct(n) {
+  return `${Math.round(n * 100)}%`;
+}
+function formatMs(ms) {
+  if (ms < 1e3) {
+    return `${ms}ms`;
   }
-  if (!settings) {
-    load();
+  return `${(ms / 1e3).toFixed(1)}s`;
+}
+function AgentMetricsPanel() {
+  const [dash, setDash] = (0, import_react9.useState)(null);
+  (0, import_react9.useEffect)(() => {
+    const svc = getAgentMetricsService();
+    const sync = () => setDash(svc.getDashboard());
+    sync();
+    const sub = svc.onDidChange(sync);
+    return () => sub.dispose();
+  }, []);
+  if (!dash || dash.totalRuns === 0) {
+    return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "agentic-metrics", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "agentic-metrics__empty", children: "No agent runs recorded yet in this session. Send a message to populate metrics." }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics agentic-metrics--hero", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Runs" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: dash.totalRuns })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Success rate" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: pct(dash.successRate) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Avg duration" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: formatMs(dash.avgDurationMs) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Avg tools / run" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: dash.avgToolCalls.toFixed(1) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Tool error rate" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: pct(dash.toolErrorRate) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Failed" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: dash.failedRuns })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Edit success" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: pct(dash.editSuccessRate) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Stalls" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: dash.stallRuns })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__stat", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "agentic-metrics__label", children: "Avg edits / run" }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: dash.avgSuccessfulEdits.toFixed(1) })
+      ] })
+    ] }),
+    dash.completionKindCounts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: "Outcomes" }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "agentic-metrics__list", children: dash.completionKindCounts.map((row) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.kind }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.count })
+      ] }, row.kind)) })
+    ] }),
+    dash.intentCounts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: "Intents" }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "agentic-metrics__list", children: dash.intentCounts.slice(0, 6).map((row) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.intent.replace(/_/g, " ") }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.count })
+      ] }, row.intent)) })
+    ] }),
+    dash.toolUsage.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: "Top tools" }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "agentic-metrics__list", children: dash.toolUsage.slice(0, 8).map((row) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.name }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: row.count })
+      ] }, row.name)) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h4", { children: "Recent runs" }),
+      /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("ul", { className: "agentic-metrics__runs", children: dash.recentRuns.slice(0, 10).map((run) => /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("li", { className: `agentic-metrics__run agentic-metrics__run--${run.status}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__run-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: run.intent?.replace(/_/g, " ") ?? "run" }),
+          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: run.status })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-metrics__run-meta", children: [
+          run.durationMs !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: formatMs(run.durationMs) }),
+          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
+            run.toolCalls,
+            " tools"
+          ] }),
+          run.successfulEdits > 0 && /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { children: [
+            run.successfulEdits,
+            " edit(s)"
+          ] }),
+          run.completionKind && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { children: run.completionKind })
+        ] }),
+        run.userMessagePreview && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { className: "agentic-metrics__run-preview", children: run.userMessagePreview })
+      ] }, run.runId)) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+        onClick: () => getAgentMetricsService().clear(),
+        children: "Clear metrics"
+      }
+    )
+  ] });
+}
+
+// src/components/SessionMemoryPanel.tsx
+var import_react10 = __toESM(require_react());
+var import_jsx_runtime18 = __toESM(require_jsx_runtime());
+function kindLabel(kind) {
+  return kind.replace(/_/g, " ");
+}
+function FactList(props) {
+  if (!props.facts.length) {
+    return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-memory__group", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("h4", { children: props.title }),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("p", { className: "agentic-memory__empty", children: props.empty })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-memory__group", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("h4", { children: props.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("ul", { className: "agentic-memory__facts", children: props.facts.map((f) => /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("li", { className: "agentic-memory__fact", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { className: "agentic-pill agentic-pill--muted agentic-memory__kind", children: kindLabel(f.kind) }),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { className: "agentic-memory__text", children: f.text }),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { className: "agentic-memory__meta", children: f.source }),
+      props.onRemove && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-memory__remove",
+          title: "Remove this fact",
+          "aria-label": "Remove fact",
+          onClick: () => props.onRemove(f.id),
+          children: "\xD7"
+        }
+      )
+    ] }, f.id)) })
+  ] });
+}
+function SessionMemoryPanel() {
+  const [snapshot, setSnapshot] = (0, import_react10.useState)(null);
+  const [scanning, setScanning] = (0, import_react10.useState)(false);
+  const sync = (0, import_react10.useCallback)(() => {
+    setSnapshot(getSessionMemoryService().getSnapshot());
+  }, []);
+  (0, import_react10.useEffect)(() => {
+    const svc = getSessionMemoryService();
+    sync();
+    const sub = svc.onDidChange(sync);
+    return () => sub.dispose();
+  }, [sync]);
+  if (!snapshot) {
+    return null;
+  }
+  const projectFacts = snapshot.project.facts;
+  const userFacts = snapshot.user.facts;
+  const tags = snapshot.project.tags;
+  const total = projectFacts.length + userFacts.length;
+  const memorySvc = getSessionMemoryService();
+  return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-memory agentic-memory--glass", children: [
+    tags.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "agentic-memory__tags", children: tags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { className: "agentic-pill agentic-pill--accent", children: tag }, tag)) }),
+    total === 0 ? /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("p", { className: "agentic-memory__empty", children: "No memory stored yet. Say \u201Cremember I prefer \u2026\u201D or run a few agent tasks \u2014 facts are inferred from successful edits." }) : /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)(import_jsx_runtime18.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+        FactList,
+        {
+          title: "Your preferences",
+          facts: userFacts,
+          empty: "No user facts yet.",
+          onRemove: (id) => memorySvc.removeUserFact(id)
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+        FactList,
+        {
+          title: "Project context",
+          facts: projectFacts,
+          empty: "Run a workspace scan to populate project facts."
+        }
+      )
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-memory__actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+          disabled: scanning,
+          onClick: () => {
+            setScanning(true);
+            void memorySvc.refreshProjectScan().finally(() => setScanning(false));
+          },
+          children: scanning ? "Scanning\u2026" : "Refresh project scan"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+          disabled: !userFacts.length,
+          onClick: () => memorySvc.clearUserMemory(),
+          children: "Clear preferences"
+        }
+      )
+    ] })
+  ] });
+}
+
+// src/components/AgenticSettingsPanel.tsx
+var import_jsx_runtime19 = __toESM(require_jsx_runtime());
+function AgenticSettingsPanel(props) {
+  const [settings, setSettings] = (0, import_react11.useState)(null);
+  (0, import_react11.useEffect)(() => {
+    if (props.open) {
+      setSettings({ ...getAgenticSettingsService().settings });
+    }
+  }, [props.open]);
+  if (!props.open || !settings) {
     return null;
   }
   const save = (partial) => {
@@ -20101,467 +21219,1498 @@ function AgenticSettingsPanel() {
     svc.updateSettings(partial);
     setSettings({ ...svc.settings });
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "agentic-settings-panel", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "agentic-settings-header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("strong", { children: "Agentic runtime" }),
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost", onClick: () => setOpen(false), children: "Close" })
+  return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-settings-drawer", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-settings-drawer__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { children: "Agent settings" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost agentic-btn--sm", onClick: props.onClose, children: "Close" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "Provider",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(
-        "select",
-        {
-          value: settings.providerType,
-          onChange: (e) => save({ providerType: e.target.value }),
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "void", children: "Agentic_MPS Chat model" }),
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "openai_compatible", children: "OpenAI-compatible (env key)" }),
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "external", children: "External gateway" })
-          ]
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "Runtime mode",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(
-        "select",
-        {
-          value: settings.runtimeMode,
-          onChange: (e) => save({ runtimeMode: e.target.value }),
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "local_provider", children: "Local provider" }),
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "external_agent_runtime", children: "External runtime" })
-          ]
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "Gateway URL",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "text",
-          placeholder: "dev://local or https://gateway.example.com",
-          value: settings.runtimeBaseUrl,
-          onChange: (e) => save({ runtimeBaseUrl: e.target.value })
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "API key env var",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "text",
-          value: settings.apiKeyEnvVar,
-          onChange: (e) => save({ apiKeyEnvVar: e.target.value })
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "Model (OpenAI / external)",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("input", { type: "text", value: settings.model, onChange: (e) => save({ model: e.target.value }) })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "agentic-checkbox", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "checkbox",
-          checked: settings.autoRunReadOnlyTools,
-          onChange: (e) => save({ autoRunReadOnlyTools: e.target.checked })
-        }
-      ),
-      "Auto-run read-only tools"
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "agentic-checkbox", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "checkbox",
-          checked: settings.requireApprovalForEdits,
-          onChange: (e) => save({ requireApprovalForEdits: e.target.checked })
-        }
-      ),
-      "Require approval for edits & terminal"
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "agentic-checkbox", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "checkbox",
-          checked: settings.enableJiraWorkflow,
-          onChange: (e) => save({ enableJiraWorkflow: e.target.checked })
-        }
-      ),
-      "Enable JIRA workflow (auto-detect PROJ-123 keys)"
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "agentic-checkbox", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "checkbox",
-          checked: settings.requireApprovalForMcpTools,
-          onChange: (e) => save({ requireApprovalForMcpTools: e.target.checked })
-        }
-      ),
-      "Require approval for MCP / JIRA tools"
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { children: [
-      "Max agent turns",
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-        "input",
-        {
-          type: "number",
-          min: 1,
-          max: 20,
-          value: settings.maxAgentTurns,
-          onChange: (e) => save({ maxAgentTurns: Number(e.target.value) || 8 })
-        }
-      )
+    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-settings-drawer__body", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(AgentCapabilitiesPanel, { settings, onChange: save }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("hr", { className: "agentic-settings-divider" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { children: [
+        "Provider",
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
+          "select",
+          {
+            value: settings.providerType,
+            onChange: (e) => save({ providerType: e.target.value }),
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "void", children: "Agentic_MPS Chat model" }),
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "openai_compatible", children: "OpenAI-compatible (env key)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "external", children: "External gateway" })
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { children: [
+        "Approval mode",
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
+          "select",
+          {
+            value: settings.approvalMode,
+            onChange: (e) => save({ approvalMode: e.target.value }),
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "cautious", children: "Cautious" }),
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "balanced", children: "Balanced" }),
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "fast", children: "Fast" })
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { children: [
+        "Max agent turns",
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "number",
+            min: 12,
+            max: 80,
+            step: 4,
+            value: settings.maxAgentTurns,
+            onChange: (e) => save({ maxAgentTurns: Math.min(80, Math.max(12, Number(e.target.value) || 40)) })
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("span", { className: "agentic-settings-hint", children: "Model loops per message (Pro uses \u226540). Orchestrator nudges are free." })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.enableJiraWorkflow,
+            onChange: (e) => save({ enableJiraWorkflow: e.target.checked })
+          }
+        ),
+        "Auto-detect JIRA keys in messages"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.requireApprovalForEdits,
+            onChange: (e) => save({ requireApprovalForEdits: e.target.checked })
+          }
+        ),
+        "Require approval for edits"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.revealTouchedFilesInEditor,
+            onChange: (e) => save({ revealTouchedFilesInEditor: e.target.checked })
+          }
+        ),
+        "Open files in editor when the agent reads or edits them"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.autoContinueOnStall,
+            onChange: (e) => save({ autoContinueOnStall: e.target.checked })
+          }
+        ),
+        "Auto-continue when agent stops without running tools"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.enableKnowledgeGraph,
+            onChange: (e) => save({ enableKnowledgeGraph: e.target.checked })
+          }
+        ),
+        "Build architecture map before LLM (reduces tokens on large repos)"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.compactActiveFileInContext,
+            onChange: (e) => save({ compactActiveFileInContext: e.target.checked })
+          }
+        ),
+        "Compact active file when map + search already cover the task"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.dynamicContextDiscovery,
+            onChange: (e) => save({ dynamicContextDiscovery: e.target.checked })
+          }
+        ),
+        "Dynamic context discovery (agent pulls context via tools \u2014 Cursor-style)"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.useWorkspaceRules,
+            onChange: (e) => save({ useWorkspaceRules: e.target.checked })
+          }
+        ),
+        "Apply .voidrules / .cursorrules team rules to agent"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.enableSessionMemory,
+            onChange: (e) => save({ enableSessionMemory: e.target.checked })
+          }
+        ),
+        "Session memory \u2014 remember preferences and project facts across chats in this workspace"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("hr", { className: "agentic-settings-divider" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "agentic-settings-section-title", children: "Developer" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.debugWorkflowToDevTools,
+            onChange: (e) => save({ debugWorkflowToDevTools: e.target.checked })
+          }
+        ),
+        "Log agent workflow to DevTools console (Help \u2192 Toggle Developer Tools)"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "agentic-checkbox", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: settings.debugWorkflowVerbose,
+            disabled: !settings.debugWorkflowToDevTools,
+            onChange: (e) => save({ debugWorkflowVerbose: e.target.checked })
+          }
+        ),
+        "Verbose DevTools logs (include model stream deltas)"
+      ] }),
+      settings.enableSessionMemory && /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { className: "agentic-settings-section-title", children: "Session memory" }),
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "agentic-settings-hint", children: "Facts injected into the agent system prompt for this workspace." }),
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(SessionMemoryPanel, {})
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("hr", { className: "agentic-settings-divider" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { className: "agentic-settings-section-title", children: "Run metrics" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "agentic-settings-hint", children: "Session stats for agent runs in this workspace (resets when cleared)." }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(AgentMetricsPanel, {})
     ] })
   ] });
 }
 
-// src/components/JiraWorkflowPanel.tsx
-var import_react6 = __toESM(require_react());
-
-// src/components/jira/OpenTicketsList.tsx
-var import_jsx_runtime14 = __toESM(require_jsx_runtime());
-function OpenTicketsList(props) {
-  const { tickets, selectedKey, loading, error, onRefresh, onSelect } = props;
-  return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("section", { className: "agentic-jira-section", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "agentic-jira-section__head", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("h3", { children: "Open tickets" }),
-      /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
-        "button",
-        {
-          type: "button",
-          className: "agentic-btn agentic-btn-ghost",
-          disabled: loading,
-          onClick: onRefresh,
-          children: loading ? "Refreshing\u2026" : "Refresh open tickets"
-        }
-      )
-    ] }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-jira-error", children: error }),
-    !loading && !error && tickets.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-jira-empty", children: "No open tickets found. Try refresh or check MCP config." }),
-    /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "agentic-jira-cards", children: tickets.map((t) => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
-      JiraTicketCard,
-      {
-        ticket: t,
-        selected: selectedKey === t.key,
-        onSelect: () => onSelect(t)
-      },
-      t.key
-    )) })
-  ] });
+// src/components/AgentStatusBar.tsx
+var import_jsx_runtime20 = __toESM(require_jsx_runtime());
+var phaseLabel = {
+  idle: "Idle",
+  parsing: "Parse",
+  collecting_context: "Context",
+  thinking: "Think",
+  streaming: "Stream",
+  tool: "Tool",
+  approval: "Review",
+  complete: "Done",
+  error: "Error"
+};
+function phaseIcon(phase) {
+  switch (phase) {
+    case "streaming":
+      return "\u2726";
+    case "tool":
+      return "\u2699";
+    case "approval":
+      return "\u23F8";
+    case "complete":
+      return "\u2713";
+    case "error":
+      return "\u2717";
+    case "collecting_context":
+      return "\u25CE";
+    case "parsing":
+      return "\u2026";
+    default:
+      return "\u25CF";
+  }
+}
+function AgentStatusBar({
+  status,
+  isRunning
+}) {
+  const display = status ?? (isRunning ? {
+    phase: "thinking",
+    title: "Working\u2026",
+    detail: "Starting agent run"} : null);
+  if (!display || display.phase === "idle") {
+    return null;
+  }
+  const isActive = !["complete", "error"].includes(display.phase);
+  return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
+    "div",
+    {
+      className: `agentic-status-bar agentic-status-bar--${display.phase}`,
+      role: "status",
+      "aria-live": "polite",
+      "aria-busy": isActive,
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "agentic-status-bar__row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("span", { className: `agentic-status-bar__icon${isActive ? " agentic-status-bar__icon--pulse" : ""}`, children: phaseIcon(display.phase) }),
+          /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "agentic-status-bar__text", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "agentic-status-bar__title", children: display.title }),
+            display.detail && /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "agentic-status-bar__detail", children: display.detail })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("span", { className: "agentic-status-bar__phase", children: display.workflowPhase ? display.workflowPhase.replace(/_/g, " ") : phaseLabel[display.phase] })
+        ] }),
+        typeof display.progress === "number" && isActive && /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "agentic-status-bar__progress-track", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
+          "div",
+          {
+            className: "agentic-status-bar__progress-fill",
+            style: { width: `${Math.max(4, Math.min(100, display.progress))}%` }
+          }
+        ) })
+      ]
+    }
+  );
 }
 
-// src/components/jira/JiraTicketDetails.tsx
-var import_jsx_runtime15 = __toESM(require_jsx_runtime());
-function JiraTicketDetails(props) {
-  const { ticket, loading } = props;
-  if (!ticket) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("section", { className: "agentic-jira-section", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("h3", { children: "Selected ticket" }),
-    loading && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "agentic-jira-loading", children: "Loading ticket details\u2026" }),
-    /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "agentic-jira-detail-card", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "agentic-jira-detail-card__key", children: ticket.key }),
-      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "agentic-jira-detail-card__summary", children: ticket.summary }),
-      /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("dl", { className: "agentic-jira-dl", children: [
-        ticket.status && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Status" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "agentic-pill", children: ticket.status }) })
-        ] }),
-        ticket.priority && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Priority" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.priority })
-        ] }),
-        ticket.issueType && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Type" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.issueType })
-        ] }),
-        ticket.assignee && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Assignee" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.assignee })
-        ] }),
-        ticket.project && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Project" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.project })
-        ] }),
-        ticket.labels?.length ? /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Labels" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.labels.join(", ") })
-        ] }) : null,
-        ticket.components?.length ? /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dt", { children: "Components" }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("dd", { children: ticket.components.join(", ") })
-        ] }) : null
+// src/components/WorkflowOrchestrationStrip.tsx
+var import_jsx_runtime21 = __toESM(require_jsx_runtime());
+var LEGACY_PHASE_ORDER = [
+  "intent_parse",
+  "classify",
+  "context_graph",
+  "plan",
+  "analyse",
+  "impact",
+  "execute",
+  "verify"
+];
+function CanonicalStrip({
+  snapshot,
+  isRunning
+}) {
+  const activePhases = snapshot.phases;
+  if (!activePhases.length) {
+    return null;
+  }
+  const current = snapshot.currentPhase;
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "agentic-workflow-strip agentic-workflow-strip--canonical", role: "list", "aria-label": "Agent workflow pipeline", children: activePhases.map((phase) => {
+    const done = snapshot.completedPhases.includes(phase);
+    const isCurrent = phase === current && isRunning;
+    const state = done ? "done" : isCurrent ? "active" : "pending";
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
+      "div",
+      {
+        className: `agentic-workflow-strip__step agentic-workflow-strip__step--${state}`,
+        role: "listitem",
+        title: canonicalPhaseLabel(phase),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "agentic-workflow-strip__dot", "aria-hidden": true }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "agentic-workflow-strip__label", children: canonicalPhaseLabel(phase) })
+        ]
+      },
+      phase
+    );
+  }) });
+}
+function LegacyStrip({
+  snapshot,
+  isRunning
+}) {
+  const activePhases = snapshot.phases.filter((p) => LEGACY_PHASE_ORDER.includes(p));
+  if (!activePhases.length) {
+    return null;
+  }
+  const current = snapshot.currentPhase;
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "agentic-workflow-strip", role: "list", "aria-label": "Agent workflow pipeline", children: activePhases.map((phase) => {
+    const done = snapshot.completedPhases.includes(phase);
+    const isCurrent = phase === current && isRunning;
+    const state = done ? "done" : isCurrent ? "active" : "pending";
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
+      "div",
+      {
+        className: `agentic-workflow-strip__step agentic-workflow-strip__step--${state}`,
+        role: "listitem",
+        title: workflowPhaseLiveTitle(phase),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "agentic-workflow-strip__dot", "aria-hidden": true }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "agentic-workflow-strip__label", children: workflowPhaseLiveTitle(phase) })
+        ]
+      },
+      phase
+    );
+  }) });
+}
+function WorkflowOrchestrationStrip({
+  snapshot,
+  canonicalSnapshot,
+  isRunning
+}) {
+  if (canonicalSnapshot?.phases.length) {
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(CanonicalStrip, { snapshot: canonicalSnapshot, isRunning });
+  }
+  if (!snapshot) {
+    return null;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(LegacyStrip, { snapshot, isRunning });
+}
+
+// src/components/WorkflowRunPlanPanel.tsx
+var import_react12 = __toESM(require_react());
+var import_jsx_runtime22 = __toESM(require_jsx_runtime());
+var BLAST_LABEL = {
+  low: "Low blast radius",
+  medium: "Medium blast radius",
+  high: "High blast radius"
+};
+function WorkflowRunPlanPanel({
+  plan,
+  snapshot,
+  isRunning
+}) {
+  const [expanded, setExpanded] = (0, import_react12.useState)(isRunning ?? false);
+  if (!plan && !snapshot?.plan && !snapshot?.analysis && !snapshot?.impact) {
+    return null;
+  }
+  const steps = plan?.steps ?? snapshot?.plan?.steps ?? [];
+  const blast = plan?.blastRadius;
+  const verify = plan?.verificationStrategy;
+  return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("section", { className: "agentic-run-plan", "aria-label": "Run plan", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-run-plan__toggle",
+        onClick: () => setExpanded((e) => !e),
+        "aria-expanded": expanded,
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "agentic-run-plan__title", children: plan?.intent.intent ? `Plan: ${plan.intent.intent.replace(/_/g, " ")}` : "Run plan" }),
+          blast && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: `agentic-run-plan__blast agentic-run-plan__blast--${blast.level}`, children: BLAST_LABEL[blast.level] }),
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "agentic-run-plan__chevron", children: expanded ? "\u25BE" : "\u25B8" })
+        ]
+      }
+    ),
+    expanded && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "agentic-run-plan__body", children: [
+      snapshot?.plan?.goal && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "agentic-run-plan__goal", children: snapshot.plan.goal }),
+      steps.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("ol", { className: "agentic-run-plan__steps", children: steps.map((step) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("li", { className: `agentic-run-plan__step agentic-run-plan__step--${step.kind}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "agentic-run-plan__step-kind", children: step.kind }),
+        step.title
+      ] }, step.id)) }),
+      snapshot?.analysis?.summary && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "agentic-run-plan__section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { children: "Analysis" }),
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: snapshot.analysis.summary })
       ] }),
-      ticket.description && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "agentic-jira-description", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "agentic-jira-description__label", children: "Description" }),
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("pre", { children: ticket.description.slice(0, 4e3) })
+      snapshot?.impact?.blastRadiusSummary && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "agentic-run-plan__section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { children: "Impact" }),
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: snapshot.impact.blastRadiusSummary })
+      ] }),
+      blast?.summary && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "agentic-run-plan__blast-summary", children: blast.summary }),
+      verify && (verify.runLint || verify.runTests || verify.suggestedCommands.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "agentic-run-plan__verify", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { children: "Verify" }),
+        verify.runLint && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "agentic-run-plan__tag", children: "lint" }),
+        verify.runTests && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "agentic-run-plan__tag", children: "tests" }),
+        verify.suggestedCommands.map((cmd) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("code", { className: "agentic-run-plan__cmd", children: cmd }, cmd))
       ] })
     ] })
   ] });
 }
 
-// src/components/jira/JiraWorkflowCheckpoints.tsx
-var import_jsx_runtime16 = __toESM(require_jsx_runtime());
-function JiraWorkflowCheckpoints(props) {
-  const { checkpoints, onRestore } = props;
-  const sorted = [...checkpoints].reverse().slice(0, 20);
-  return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("section", { className: "agentic-jira-section", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("h3", { children: "Checkpoints" }),
-    !sorted.length && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "agentic-jira-empty", children: "Checkpoints are created at each major workflow stage." }),
-    /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("ul", { className: "agentic-jira-checkpoints", children: sorted.map((cp) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("li", { className: "agentic-jira-checkpoint-item", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "agentic-jira-checkpoint-item__head", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "agentic-pill agentic-pill--muted", children: cp.stage }),
-        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("span", { className: "agentic-jira-checkpoint-item__time", children: new Date(cp.timestamp).toLocaleString() })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "agentic-jira-checkpoint-item__summary", children: cp.summary }),
-      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "agentic-jira-checkpoint-item__key", children: cp.ticketKey }),
-      /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
-        "button",
-        {
-          type: "button",
-          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
-          onClick: () => onRestore(cp.id),
-          children: "Inspect"
-        }
-      )
-    ] }, cp.id)) })
-  ] });
-}
-
-// src/components/jira/WorkflowDecisionButtons.tsx
-var import_jsx_runtime17 = __toESM(require_jsx_runtime());
-function WorkflowDecisionButtons(props) {
-  const { hasPlan, planLoading, executing, phase, onAccept, onDecline, onRegenerate } = props;
-  const show = hasPlan && (phase === "awaiting_decision" || phase === "plan_ready" || phase === "details_ready");
-  if (!show && phase !== "executing" && phase !== "completed" && phase !== "declined") {
-    return null;
+// src/components/AgentMissionControl.tsx
+var import_react13 = __toESM(require_react());
+var import_jsx_runtime23 = __toESM(require_jsx_runtime());
+var STATUS_CLASS = {
+  idle: "agentic-mission__pill--idle",
+  in_progress: "agentic-mission__pill--progress",
+  waiting_approval: "agentic-mission__pill--approval",
+  ready_for_review: "agentic-mission__pill--ready",
+  failed: "agentic-mission__pill--failed"
+};
+function AgentMissionControl() {
+  const { threads, currentThreadId } = useAgenticThreads();
+  const [open, setOpen] = (0, import_react13.useState)(false);
+  const chat = getChatService();
+  const rows = buildMissionRows(threads);
+  const active = rows.filter((r) => r.status !== "idle");
+  const inProgress = active.filter((r) => r.status === "in_progress").length;
+  const needsYou = active.filter((r) => r.status === "waiting_approval").length;
+  const ready = active.filter((r) => r.status === "ready_for_review").length;
+  if (!open) {
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-btn agentic-btn--soft agentic-btn--sm agentic-mission-toggle",
+        title: "Agent runs",
+        onClick: () => setOpen(true),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-mission-toggle__label", children: "Runs" }),
+          inProgress > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-highlight-btn__count agentic-mission-toggle__badge", children: inProgress }),
+          needsYou > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-highlight-btn__count agentic-mission-toggle__badge agentic-mission-toggle__badge--warn", children: needsYou })
+        ]
+      }
+    );
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "agentic-jira-decisions", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "agentic-mission-panel", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "agentic-mission-panel__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-mission-panel__title", children: "Agent runs" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { type: "button", className: "agentic-btn agentic-btn--soft agentic-btn--sm", onClick: () => setOpen(false), children: "Close" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "agentic-mission-panel__stats", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+        inProgress,
+        " in progress"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+        needsYou,
+        " need approval"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { children: [
+        ready,
+        " ready for review"
+      ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("ul", { className: "agentic-mission-panel__list", children: rows.slice(0, 12).map((row) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
       "button",
       {
         type: "button",
-        className: "agentic-btn agentic-btn-primary",
-        disabled: !hasPlan || planLoading || executing,
-        onClick: onAccept,
-        children: executing ? "Running workflow\u2026" : "Accept workflow"
+        className: `agentic-mission-row${row.threadId === currentThreadId ? " agentic-mission-row--active" : ""}`,
+        onClick: () => {
+          chat.switchThread(row.threadId);
+          setOpen(false);
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "agentic-mission-row__top", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-mission-row__title", children: row.title }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: `agentic-mission__pill ${STATUS_CLASS[row.status]}`, children: row.statusLabel })
+          ] }),
+          row.fileDelta && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-mission-row__delta", children: row.fileDelta }),
+          row.preview && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "agentic-mission-row__preview", children: row.preview })
+        ]
       }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
-      "button",
-      {
-        type: "button",
-        className: "agentic-btn",
-        disabled: planLoading || executing,
-        onClick: onRegenerate,
-        children: "Regenerate plan"
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
-      "button",
-      {
-        type: "button",
-        className: "agentic-btn agentic-btn-ghost",
-        disabled: executing,
-        onClick: onDecline,
-        children: "Decline workflow"
-      }
-    )
+    ) }, row.threadId)) }),
+    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary agentic-btn--sm agentic-mission-panel__new", onClick: () => chat.createThread(), children: "+ New run" })
   ] });
 }
 
-// src/components/JiraWorkflowPanel.tsx
-var import_jsx_runtime18 = __toESM(require_jsx_runtime());
-function JiraWorkflowPanel() {
-  const wf = useInteractiveJiraWorkflow();
-  const jira = getJiraWorkflowService();
-  const [projectFilter, setProjectFilter] = (0, import_react6.useState)("");
-  return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--interactive", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("header", { className: "agentic-jira-panel__header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "agentic-jira-panel__title", children: "JIRA Workflow" }),
-        /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-jira-panel__subtitle", children: [
-          "Sidebar workflow. For tickets inside the chat thread, click ",
-          /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("strong", { children: "Show JIRA in chat" }),
-          " in the toolbar or composer below."
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost", onClick: () => void jira.openMcpConfig(), children: "MCP config" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-      OpenTicketsList,
-      {
-        tickets: wf.openTickets,
-        selectedKey: wf.selectedTicket?.key ?? null,
-        loading: wf.ticketsLoading,
-        error: wf.error,
-        onRefresh: () => void jira.refreshOpenTickets(projectFilter.trim() || void 0),
-        onSelect: (t) => void jira.selectTicket(t)
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-jira-advanced", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-        "button",
-        {
-          type: "button",
-          className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
-          onClick: () => jira.setShowAdvancedInput(!wf.showAdvancedInput),
-          children: wf.showAdvancedInput ? "Hide manual key" : "Advanced: manual ticket key"
-        }
-      ),
-      wf.showAdvancedInput && /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "agentic-jira-panel__row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-          "input",
-          {
-            type: "text",
-            placeholder: "KAN-4",
-            value: wf.manualIssueKey,
-            onChange: (e) => jira.setManualIssueKey(e.target.value),
-            className: "agentic-jira-input"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-          "button",
-          {
-            type: "button",
-            className: "agentic-btn",
-            disabled: !wf.manualIssueKey.trim(),
-            onClick: () => void jira.selectTicketByKey(wf.manualIssueKey.trim()),
-            children: "Load ticket"
-          }
-        )
-      ] }),
-      wf.showAdvancedInput && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-        "input",
-        {
-          type: "text",
-          className: "agentic-jira-input agentic-jira-input--filter",
-          placeholder: "Project key filter (e.g. KAN)",
-          value: projectFilter,
-          onChange: (e) => setProjectFilter(e.target.value.toUpperCase())
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(JiraTicketDetails, { ticket: wf.selectedTicket, loading: wf.detailsLoading }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(JiraWorkflowPlanView, { plan: wf.plan, loading: wf.planLoading }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-      WorkflowDecisionButtons,
-      {
-        hasPlan: !!wf.plan,
-        planLoading: wf.planLoading,
-        executing: wf.executing,
-        phase: wf.phase,
-        onAccept: () => void jira.acceptWorkflow(),
-        onDecline: () => jira.declineWorkflow(),
-        onRegenerate: () => void jira.regeneratePlan()
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(JiraWorkflowStream, { events: wf.events }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
-      JiraWorkflowCheckpoints,
-      {
-        checkpoints: wf.checkpoints,
-        onRestore: (id) => void jira.restoreCheckpoint(id)
-      }
-    )
-  ] });
+// src/components/AgenticVoidCommandBar.tsx
+function AgenticVoidCommandBar() {
+  return null;
 }
 
 // src/components/AgenticChat.tsx
-var import_jsx_runtime19 = __toESM(require_jsx_runtime());
+var import_jsx_runtime24 = __toESM(require_jsx_runtime());
 function AgenticChat() {
+  const [settingsOpen, setSettingsOpen] = (0, import_react14.useState)(false);
   const { threads, currentThreadId } = useAgenticThreads();
   const workspace = useWorkspaceLabel();
   const pendingApprovals2 = usePendingApprovals();
+  const liveStatusHook = useLiveAgentStatus();
   const thread = threads.find((t) => t.id === currentThreadId) ?? null;
+  const liveStatus2 = liveStatusHook ?? thread?.liveStatus ?? null;
   const isRunning = !!thread?.currentRunId;
+  const messagesEndRef = (0, import_react14.useRef)(null);
   const chat = getChatService();
-  const settings = useAgenticSettings();
+  useAgenticSettings();
   const jiraMcpStatus = useJiraMcpStatus();
-  const contextLabels = ["JIRA in chat"];
-  if (settings.enableJiraWorkflow) {
-    contextLabels.push("Auto JIRA keys");
-  }
-  if (thread?.includeActiveFile) contextLabels.push("Active file");
-  if (thread?.includeSelection) contextLabels.push("Selection");
-  return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-root", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("header", { className: "agentic-header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h1", { children: "MPS_AC Agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-header-meta", children: [
-        "Workspace: ",
-        workspace || "\u2014",
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-header-jira", title: jiraMcpStatus, children: [
-          "JIRA MCP: ",
-          jiraMcpStatus
-        ] })
+  const voidLike = isVoidLikeSimpleUiMode(thread?.runUiMode);
+  const showWorkflowChrome = !shouldSkipWorkflowChrome(thread?.runUiMode);
+  const filteredApprovals = pendingApprovals2.filter(
+    (r) => !thread?.messages.some((m) => m.decision?.approvalId === r.id && !m.decision?.resolved)
+  );
+  const visibleMessages = thread?.messages ?? [];
+  const isEmpty = visibleMessages.length === 0;
+  (0, import_react14.useEffect)(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [visibleMessages.length, isRunning, liveStatus2?.detail, filteredApprovals.length, thread?.status]);
+  const agentModeId = thread?.agentModeId ?? "agent";
+  const activeMode = COMPOSER_AGENT_MODES.find((m) => m.id === agentModeId) ?? COMPOSER_AGENT_MODES[0];
+  return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: `agentic-root agentic-root--chat${voidLike ? " agentic-root--void-like" : " agentic-root--aurora"}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("header", { className: "agentic-chat-header agentic-chat-header--slim", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "agentic-chat-header__brand", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "agentic-chat-header__title", children: voidLike ? "Chat" : "Agentic" }),
+        !voidLike && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: `agentic-mode-badge agentic-mode-badge--${agentModeId}`, title: activeMode.description, children: activeMode.shortLabel }),
+        workspace && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "agentic-chat-header__meta", children: workspace }),
+        isRunning && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "agentic-chat-header__pulse", "aria-hidden": true })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(AgenticSettingsPanel, {})
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "agentic-chat-header__actions", children: [
+        thread?.status === "failed" && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-chat-icon-btn",
+            title: "Retry last message",
+            onClick: () => void chat.retryLastMessage(),
+            children: "\u21BB"
+          }
+        ),
+        !voidLike && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(AgentMissionControl, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("button", { type: "button", className: "agentic-chat-icon-btn", title: "New chat", onClick: () => chat.createThread(), children: "+" }),
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+          "button",
+          {
+            type: "button",
+            className: `agentic-chat-icon-btn${settingsOpen ? " agentic-chat-icon-btn--active" : ""}`,
+            title: "Settings",
+            onClick: () => setSettingsOpen((o) => !o),
+            children: "\u2699"
+          }
+        )
+      ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-toolbar", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { type: "button", className: "agentic-btn", onClick: () => chat.createThread(), children: "New chat" }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
-        "button",
+    showWorkflowChrome && /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        WorkflowOrchestrationStrip,
         {
-          type: "button",
-          className: "agentic-btn agentic-btn-primary",
-          disabled: isRunning,
-          onClick: () => void chat.loadJiraTicketsInChat(),
-          children: "Show JIRA in chat"
+          snapshot: thread?.workflowSnapshot,
+          canonicalSnapshot: thread?.canonicalWorkflowSnapshot,
+          isRunning
         }
       ),
-      thread?.status === "failed" && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { type: "button", className: "agentic-btn", onClick: () => void chat.retryLastMessage(), children: "Retry" })
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        WorkflowRunPlanPanel,
+        {
+          plan: thread?.workflowRunPlan,
+          snapshot: thread?.workflowSnapshot,
+          isRunning
+        }
+      )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(ContextPills, { labels: contextLabels }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(JiraWorkflowPanel, {}),
-    thread && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(CheckpointBanner, { checkpoints: thread.checkpoints }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "agentic-messages", children: [
-      thread?.messages.map((m, idx) => {
-        const isLastAssistant = m.role === "assistant" && idx === thread.messages.length - 1 && m.state !== "complete" && m.state !== "error";
-        return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+    voidLike && isRunning && liveStatus2?.detail && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "agentic-chat-void-status", "aria-live": "polite", children: liveStatus2.detail }),
+    !voidLike && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(AgentStatusBar, { status: liveStatus2, isRunning }),
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(AgenticSettingsPanel, { open: settingsOpen, onClose: () => setSettingsOpen(false) }),
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("main", { className: "agentic-chat-main", children: isEmpty ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "agentic-chat-empty", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "agentic-chat-empty__title", children: "What should we work on?" }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "agentic-chat-empty__hint", children: "Ask a question or describe a change \u2014 edits appear in the editor with accept/reject." }),
+      /connected|ready/i.test(jiraMcpStatus) && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "agentic-chat-empty__hint agentic-chat-empty__hint--sub", children: "JIRA tickets: open the Composer view in the sidebar." })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "agentic-chat-thread", children: [
+      visibleMessages.map((m, idx) => {
+        const isLastAssistant = m.role === "assistant" && idx === visibleMessages.length - 1 && m.state !== "complete" && m.state !== "error";
+        return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
           ChatMessage,
           {
             message: m,
-            isLive: isLastAssistant && isRunning
+            isLive: isLastAssistant && isRunning,
+            voidLike
           },
           m.id
         );
       }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
-        ApprovalPanel,
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { ref: messagesEndRef, className: "agentic-chat-thread__anchor" })
+    ] }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("footer", { className: "agentic-chat-footer", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(AgenticVoidCommandBar, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(ChatBottomBar, { requests: filteredApprovals }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        Composer,
         {
-          requests: pendingApprovals2,
-          onApprove: (id) => chat.approveEdit(id),
-          onReject: (id) => chat.rejectEdit(id)
+          isRunning,
+          includeActiveFile: thread?.includeActiveFile ?? true,
+          includeSelection: thread?.includeSelection ?? true,
+          autoApplyEdits: thread?.autoApplyEdits ?? false,
+          agentModeId,
+          onAgentModeChange: (modeId) => chat.setAgentMode(modeId),
+          onToggleActiveFile: () => chat.setIncludeActiveFile(!(thread?.includeActiveFile ?? true)),
+          onToggleSelection: () => chat.setIncludeSelection(!(thread?.includeSelection ?? true)),
+          onToggleAutoApply: () => chat.setAutoApplyEdits(!(thread?.autoApplyEdits ?? false)),
+          onSend: (text) => void chat.sendUserMessage(text),
+          onStop: () => chat.stopCurrentRun()
         }
       )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
-      Composer,
-      {
-        isRunning,
-        includeActiveFile: thread?.includeActiveFile ?? true,
-        includeSelection: thread?.includeSelection ?? true,
-        autoApplyEdits: thread?.autoApplyEdits ?? false,
-        onToggleActiveFile: () => chat.setIncludeActiveFile(!(thread?.includeActiveFile ?? true)),
-        onToggleSelection: () => chat.setIncludeSelection(!(thread?.includeSelection ?? true)),
-        onToggleAutoApply: () => chat.setAutoApplyEdits(!(thread?.autoApplyEdits ?? false)),
-        jiraWorkflowEnabled: true,
-        onJiraListTickets: () => void chat.loadJiraTicketsInChat(),
-        onSend: (text) => void chat.sendUserMessage(text),
-        onStop: () => chat.stopCurrentRun()
-      }
-    )
+    ] })
   ] });
+}
+
+// src/components/JiraPanel.tsx
+var import_react16 = __toESM(require_react());
+
+// src/components/ApprovalPanel.tsx
+var import_jsx_runtime25 = __toESM(require_jsx_runtime());
+function ApprovalPanel({
+  requests,
+  onApprove,
+  onReject
+}) {
+  const pending = requests.filter((r) => r.decision === "pending");
+  if (!pending.length) return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "agentic-approval", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("div", { style: { fontWeight: 600, marginBottom: 8 }, children: "Approval required" }),
+    pending.map((r) => {
+      const items = r.items?.length ? r.items : [{
+        toolCallId: r.toolCallId,
+        toolName: r.toolName ?? "tool",
+        title: r.title,
+        description: r.description,
+        preview: r.preview,
+        filePath: r.filePath
+      }];
+      return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "agentic-approval-card", style: { marginBottom: 12 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("div", { children: r.title }),
+        items.map((item, idx) => /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { style: { marginTop: 8, paddingLeft: items.length > 1 ? 8 : 0, borderLeft: items.length > 1 ? "2px solid var(--vscode-panel-border)" : void 0 }, children: [
+          items.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("div", { style: { fontSize: 12, fontWeight: 600 }, children: item.title }),
+          item.filePath && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("div", { style: { fontSize: 11, opacity: 0.8 }, children: item.filePath }),
+          /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("div", { style: { fontSize: 12, opacity: 0.85 }, children: item.description }),
+          item.preview && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("pre", { style: { fontSize: 11, maxHeight: 120, overflow: "auto" }, children: item.preview })
+        ] }, item.toolCallId || idx)),
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { style: { display: "flex", gap: 8, marginTop: 8 }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary", onClick: () => onApprove(r.id), children: items.length > 1 ? `Approve all (${items.length})` : "Approve" }),
+          /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("button", { type: "button", className: "agentic-btn", onClick: () => onReject(r.id), children: "Reject" })
+        ] })
+      ] }, r.id);
+    })
+  ] });
+}
+
+// src/agentic-bundle-types.ts
+function jiraInteractiveToChatUi(interactive) {
+  let mode = "list";
+  if (interactive.phase === "declined") {
+    mode = "declined";
+  } else if (interactive.agentRunStalled && interactive.agentExecutionSummary) {
+    mode = "stalled";
+  } else if (interactive.phase === "failed" && interactive.selectedTicket) {
+    mode = "detail";
+  } else if (interactive.phase === "completed") {
+    mode = "complete";
+  } else if (interactive.executing || interactive.phase === "executing") {
+    mode = "executing";
+  } else if (interactive.selectedTicket) {
+    mode = "detail";
+  }
+  return {
+    mode,
+    tickets: interactive.openTickets,
+    selectedTicket: interactive.selectedTicket,
+    plan: interactive.plan,
+    planLoading: interactive.planLoading,
+    events: interactive.events,
+    error: interactive.error,
+    executing: interactive.executing,
+    executionChangedFiles: interactive.executionChangedFiles ?? [],
+    jiraSyncResult: interactive.jiraSyncResult ?? null,
+    agentExecutionSummary: interactive.agentExecutionSummary ?? null,
+    agentRunStalled: interactive.agentRunStalled ?? false
+  };
+}
+function buildJiraWorkflowDecision(ui) {
+  const show = ui.plan && !ui.planLoading && ui.mode === "detail" && !ui.executing && ui.selectedTicket;
+  if (!show) {
+    return void 0;
+  }
+  return {
+    kind: "jira_workflow",
+    title: "Run plan",
+    actions: [
+      { id: "proceed", label: "Run", variant: "primary" },
+      { id: "decline", label: "Cancel", variant: "ghost" }
+    ]
+  };
+}
+
+// src/components/jira/JiraWorkflowStream.tsx
+var import_react15 = __toESM(require_react());
+var import_jsx_runtime26 = __toESM(require_jsx_runtime());
+function JiraWorkflowStream(props) {
+  const endRef = (0, import_react15.useRef)(null);
+  (0, import_react15.useEffect)(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [props.events.length]);
+  if (!props.events.length) {
+    return null;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { className: "agentic-jira-section", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h3", { children: "Workflow log" }),
+    /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("ul", { className: "agentic-jira-timeline agentic-jira-timeline--panel", children: [
+      props.events.map((evt) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("li", { className: `agentic-jira-timeline__item agentic-jira-timeline__item--${evt.level}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "agentic-jira-timeline__dot" }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "agentic-jira-timeline__content", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "agentic-jira-timeline__msg", children: evt.message }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "agentic-jira-timeline__meta", children: [
+            evt.ticketKey && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { children: evt.ticketKey }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { children: new Date(evt.timestamp).toLocaleTimeString() })
+          ] })
+        ] })
+      ] }, evt.id)),
+      /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { ref: endRef })
+    ] })
+  ] });
+}
+
+// src/components/jira/JiraWorkflowResult.tsx
+var import_jsx_runtime27 = __toESM(require_jsx_runtime());
+function JiraWorkflowResult({ ui }) {
+  const latest = ui.events.length > 0 ? ui.events[ui.events.length - 1] : null;
+  const chat = getChatService();
+  const summary = ui.agentExecutionSummary;
+  if (ui.mode === "declined") {
+    return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome agentic-jira-outcome--muted", children: "Workflow cancelled \u2014 no changes applied." });
+  }
+  if (ui.executing || ui.mode === "executing") {
+    return /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "agentic-jira-outcome agentic-jira-outcome--running", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "agentic-jira-outcome__spinner", "aria-hidden": true }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__title", children: "Running workflow" }),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__detail", children: latest?.message ?? "Agent is implementing the plan in the main editor." })
+      ] })
+    ] });
+  }
+  if (ui.mode === "stalled" && summary) {
+    return /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "agentic-jira-outcome agentic-jira-outcome--stalled", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__title", children: "Stopped \u2014 no tools run" }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__detail", children: "JIRA was not updated. Continue with tools to resume the agent, then run the workflow again." }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkflowSummaryPanel, { summary }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "agentic-jira-outcome__actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn-primary agentic-btn--sm",
+            onClick: () => void chat.continueAfterStall(),
+            children: "Continue with tools"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+            onClick: () => void chat.acceptJiraWorkflowInChat(),
+            children: "Re-run workflow"
+          }
+        )
+      ] })
+    ] });
+  }
+  if (ui.mode !== "complete" && ui.mode !== "stalled") {
+    return null;
+  }
+  const key = ui.selectedTicket?.key ?? "ticket";
+  const status = ui.selectedTicket?.status;
+  const stalled = ui.agentRunStalled;
+  return /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: `agentic-jira-outcome${stalled ? " agentic-jira-outcome--stalled" : " agentic-jira-outcome--success"}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "agentic-jira-outcome__title", children: [
+      stalled ? "Incomplete" : "Complete",
+      " \u2014 ",
+      key
+    ] }),
+    status && /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "agentic-jira-outcome__detail", children: [
+      "JIRA status: ",
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("strong", { children: status })
+    ] }),
+    latest && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__detail", children: latest.message }),
+    summary && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(WorkflowSummaryPanel, { summary }),
+    stalled && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "agentic-jira-outcome__actions", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-btn agentic-btn-primary agentic-btn--sm",
+        onClick: () => void chat.continueAfterStall(),
+        children: "Continue with tools"
+      }
+    ) })
+  ] });
+}
+
+// src/components/jira/JiraExecutionPanel.tsx
+var import_jsx_runtime28 = __toESM(require_jsx_runtime());
+var STATUS_LABEL2 = {
+  opened: "Opened",
+  preview: "Editing",
+  applied: "Applied"
+};
+function fileName3(path) {
+  const parts = path.replace(/\\/g, "/").split("/");
+  return parts[parts.length - 1] || path;
+}
+function JiraExecutionPanel({ ui }) {
+  const show = ui.executing || ui.mode === "executing" || ui.mode === "complete" || ui.mode === "stalled" || ui.executionChangedFiles.length > 0;
+  if (!show) {
+    return null;
+  }
+  const files = [...ui.executionChangedFiles].sort((a, b) => b.updatedAt - a.updatedAt);
+  const isRunning = ui.executing || ui.mode === "executing";
+  const sync = ui.jiraSyncResult;
+  return /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: `agentic-jira-execution${isRunning ? " agentic-jira-execution--active" : ""}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "agentic-jira-execution__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("span", { className: "agentic-jira-execution__badge", children: isRunning ? "Execution mode" : "Execution complete" }),
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("span", { className: "agentic-jira-execution__hint", children: isRunning ? "Changes open in the main editor \u2014 green/red highlights show live diffs." : "Files below were opened or edited during this run." })
+    ] }),
+    files.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("ul", { className: "agentic-jira-execution__files", children: files.map((f) => /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-jira-execution__file",
+        title: f.path,
+        onClick: () => void getJiraWorkflowService().openExecutionFileInEditor(f.path),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("span", { className: "agentic-jira-execution__file-name", children: fileName3(f.path) }),
+          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("span", { className: "agentic-jira-execution__file-path", children: f.path }),
+          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("span", { className: `agentic-jira-execution__file-status agentic-jira-execution__file-status--${f.status}`, children: STATUS_LABEL2[f.status] })
+        ]
+      }
+    ) }, f.path)) }) : isRunning ? /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("p", { className: "agentic-jira-execution__empty", children: "Waiting for file edits\u2026" }) : null,
+    sync && ui.mode === "complete" && /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "agentic-jira-execution__sync", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "agentic-jira-execution__sync-title", children: "JIRA sync" }),
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("ul", { className: "agentic-jira-execution__sync-list", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("li", { className: sync.commentAdded ? "agentic-jira-execution__sync-ok" : "agentic-jira-execution__sync-warn", children: sync.commentAdded ? "Comment posted" : "Comment not posted" }),
+        sync.transitionAttempted && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("li", { className: sync.transitionOk ? "agentic-jira-execution__sync-ok" : "agentic-jira-execution__sync-warn", children: sync.transitionOk ? `Status \u2192 ${sync.transitionTarget ?? "updated"}` : `Transition to "${sync.transitionTarget ?? "target"}" failed` }),
+        sync.refreshedStatus && /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("li", { className: "agentic-jira-execution__sync-ok", children: [
+          "Current status: ",
+          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("strong", { children: sync.refreshedStatus })
+        ] })
+      ] }),
+      sync.errors.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("ul", { className: "agentic-jira-execution__sync-errors", children: sync.errors.map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("li", { children: e }, i)) })
+    ] })
+  ] });
+}
+
+// src/util/activityFilters.ts
+function shouldShowActivityLine(line) {
+  if (line.kind === "orchestrator") {
+    return /plan:|impact:|verify|lint|checkpoint|restored|format reminder/i.test(line.text);
+  }
+  if (line.kind === "reasoning") {
+    return false;
+  }
+  return false;
+}
+
+// src/components/ActivityFeed.tsx
+var import_jsx_runtime29 = __toESM(require_jsx_runtime());
+function ActivityFeed({ message }) {
+  const lines = (message.activityLines ?? []).filter(shouldShowActivityLine);
+  if (!lines.length) {
+    return null;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "agentic-chat-activity", "aria-live": "polite", children: lines.map((line) => /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(
+    "div",
+    {
+      className: `agentic-chat-activity__line agentic-chat-activity__line--${line.kind ?? "status"}`,
+      children: line.text
+    },
+    line.id
+  )) });
+}
+
+// src/components/WorkflowFilesPanel.tsx
+var import_jsx_runtime30 = __toESM(require_jsx_runtime());
+var STATUS_LABEL3 = {
+  read: "Read",
+  preview: "Editing",
+  applied: "Applied",
+  rejected: "Rejected",
+  failed: "Edit failed"
+};
+function fileName4(path) {
+  const parts = path.replace(/\\/g, "/").split("/");
+  return parts[parts.length - 1] || path;
+}
+function WorkflowFilesPanel({
+  message,
+  isLive
+}) {
+  const files = [...message.touchedFiles ?? []].sort((a, b) => b.updatedAt - a.updatedAt);
+  const isActive = isLive && message.state && !["complete", "error"].includes(message.state);
+  const show = isActive || files.length > 0;
+  if (!show) {
+    return null;
+  }
+  const hasEdits = files.some((f) => f.status === "preview" || f.status === "applied");
+  return /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)("div", { className: `agentic-workflow-files${isActive ? " agentic-workflow-files--active" : ""}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)("div", { className: "agentic-workflow-files__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("span", { className: "agentic-workflow-files__badge", children: isActive ? "Workflow" : "Files this turn" }),
+      /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("span", { className: "agentic-workflow-files__hint", children: isActive ? hasEdits ? "Edits open in the main editor \u2014 green/red highlights show live diffs." : "Files open in the editor as the agent reads them." : "Click a file to open it or review changes." })
+    ] }),
+    files.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("ul", { className: "agentic-workflow-files__list", children: files.map((f) => /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "agentic-workflow-files__file",
+        title: f.path,
+        onClick: () => void getChatService().openTouchedFile(f.path, message.id),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("span", { className: "agentic-workflow-files__file-name", children: fileName4(f.path) }),
+          /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("span", { className: "agentic-workflow-files__file-path", children: f.path }),
+          /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("span", { className: `agentic-workflow-files__file-status agentic-workflow-files__file-status--${f.status}`, children: STATUS_LABEL3[f.status] })
+        ]
+      }
+    ) }, f.path)) }) : isActive ? /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("p", { className: "agentic-workflow-files__empty", children: "Waiting for file reads or edits\u2026" }) : null
+  ] });
+}
+
+// src/components/jira/JiraAgentActivity.tsx
+var import_jsx_runtime31 = __toESM(require_jsx_runtime());
+function JiraAgentActivity(props) {
+  const { threads, currentThreadId } = useAgenticThreads();
+  const live = useLiveAgentStatus();
+  const thread = threads.find((t) => t.id === currentThreadId);
+  const assistant = thread?.messages ? [...thread.messages].reverse().find((m) => m.role === "assistant") : void 0;
+  const isRunning = thread?.status === "running" || thread?.status === "waiting_approval";
+  const runActive = props.showWhileRunning && isRunning;
+  const postRunActive = props.showAfterRun && !isRunning && assistant && (assistant.workflowSummary || assistant.activityLines?.length);
+  if (!runActive && !postRunActive) {
+    return null;
+  }
+  const isLive = runActive && assistant?.state !== "complete" && assistant?.state !== "error";
+  return /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)("section", { className: "agentic-jira-section agentic-jira-run agentic-jira-run--intelligent", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("h3", { children: runActive ? "Agent run" : "Agent run summary" }),
+    /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(AgentStatusBar, { status: live, isRunning: !!runActive }),
+    assistant ? /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)("div", { className: "agentic-jira-run__panels", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(ReasoningPanel, { message: assistant, isLive }),
+      /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(ActivityFeed, { message: assistant }),
+      /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(WorkflowFilesPanel, { message: assistant, isLive }),
+      /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(LiveStreamPanel, { message: assistant, runActive: !!runActive }),
+      assistant.workflowSummary && !runActive && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(WorkflowSummaryPanel, { summary: assistant.workflowSummary }),
+      assistant.workflowSummary && runActive && assistant.state === "complete" && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(WorkflowSummaryPanel, { summary: assistant.workflowSummary })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("div", { className: "agentic-jira-empty", children: "Starting agent \u2014 output will appear here\u2026" })
+  ] });
+}
+
+// src/components/jira/JiraWorkspace.tsx
+var import_jsx_runtime32 = __toESM(require_jsx_runtime());
+function JiraWorkspace() {
+  const interactive = useInteractiveJiraWorkflow();
+  const ui = jiraInteractiveToChatUi(interactive);
+  const chat = getChatService();
+  const decision = buildJiraWorkflowDecision(ui);
+  const canRun = !!decision;
+  const isRunning = ui.executing || ui.mode === "executing";
+  const showList = !ui.selectedTicket;
+  if (interactive.ticketsLoading && !ui.tickets.length && !ui.selectedTicket) {
+    return /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "agentic-jira-panel agentic-jira-panel--loading", children: "Loading tickets\u2026" });
+  }
+  if (ui.error && !ui.tickets.length && !ui.selectedTicket) {
+    return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--error", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "agentic-jira-panel__error", children: ui.error }),
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-ghost agentic-btn--sm", onClick: () => void chat.refreshJiraTicketsInChat(), children: "Retry" })
+    ] });
+  }
+  if (showList) {
+    return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--list", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__head agentic-jira-panel__head--modern", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__head-text", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-jira-panel__title", children: "Jira" }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-jira-panel__subtitle", children: "Open tickets in your workspace" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn--soft agentic-btn--sm",
+            disabled: interactive.ticketsLoading,
+            onClick: () => void chat.refreshJiraTicketsInChat(),
+            children: "Refresh"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "agentic-jira-panel__body", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(
+        JiraTicketList,
+        {
+          tickets: ui.tickets,
+          openOnly: true,
+          onSelectOpen: (key) => void chat.pickJiraTicketInChat(key)
+        }
+      ) })
+    ] });
+  }
+  if (ui.selectedTicket) {
+    const t = ui.selectedTicket;
+    const showRunUi = isRunning || ui.mode === "complete" || ui.mode === "stalled" || ui.events.length > 0;
+    const showAgentPanels = isRunning || ui.mode === "complete" || ui.mode === "stalled";
+    return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--detail", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__head agentic-jira-panel__head--modern", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("button", { type: "button", className: "agentic-btn agentic-btn--soft agentic-btn--sm", onClick: () => chat.showJiraTicketListInChat(), children: "\u2190 Tickets" }),
+        ui.plan && !ui.planLoading && !isRunning && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn--soft agentic-btn--sm",
+            onClick: () => void chat.regenerateJiraPlanInChat(),
+            children: "Replan"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__body agentic-jira-panel__body--scroll", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__ticket agentic-jira-panel__ticket--hero", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-jira-panel__key", children: t.key }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-jira-panel__summary", children: t.summary }),
+          (t.status || t.priority || t.issueType) && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__meta agentic-highlight-bar agentic-highlight-bar--inline", children: [
+            t.status && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-pill agentic-pill--status", children: t.status }),
+            t.priority && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-pill agentic-pill--priority-high", children: t.priority }),
+            t.issueType && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "agentic-pill agentic-pill--type", children: t.issueType })
+          ] })
+        ] }),
+        interactive.detailsLoading && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "agentic-jira-panel__status", children: "Loading ticket details\u2026" }),
+        t.description && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-description agentic-jira-description--panel", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "agentic-jira-description__label", children: "Description" }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("pre", { children: t.description.length > 2e3 ? `${t.description.slice(0, 2e3)}\u2026` : t.description })
+        ] }),
+        ui.error && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "agentic-jira-panel__error", children: ui.error }),
+        (isRunning || ui.mode === "complete" || ui.mode === "stalled" || ui.executionChangedFiles.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraExecutionPanel, { ui }),
+        showAgentPanels && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraAgentActivity, { showWhileRunning: isRunning, showAfterRun: ui.mode === "complete" || ui.mode === "stalled" }),
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraWorkflowResult, { ui }),
+        ui.planLoading && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "agentic-jira-panel__status", children: "Planning\u2026" }),
+        !isRunning && !ui.planLoading && ui.plan && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraWorkflowPlanView, { plan: ui.plan, loading: false }),
+        isRunning && ui.plan && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("details", { className: "agentic-jira-panel__plan-fold", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("summary", { children: "Approved plan" }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraWorkflowPlanView, { plan: ui.plan, loading: false })
+        ] }),
+        showRunUi && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(JiraWorkflowStream, { events: ui.events }),
+        canRun && !isRunning && ui.mode !== "stalled" && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel__actions agentic-jira-panel__actions--sticky", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary agentic-btn--lg", onClick: () => void chat.acceptJiraWorkflowInChat(), children: "Run workflow" }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("button", { type: "button", className: "agentic-btn agentic-btn--soft", onClick: () => chat.declineJiraWorkflowInChat(), children: "Cancel" })
+        ] })
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "agentic-jira-panel agentic-jira-panel--empty", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "agentic-jira-panel__empty", children: "No tickets loaded." }),
+    /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("button", { type: "button", className: "agentic-btn agentic-btn-primary agentic-btn--sm", onClick: () => void chat.loadJiraTicketsInChat(), children: "Load tickets" })
+  ] });
+}
+
+// src/components/JiraPanel.tsx
+var import_jsx_runtime33 = __toESM(require_jsx_runtime());
+function JiraPanel() {
+  const [settingsOpen, setSettingsOpen] = (0, import_react16.useState)(false);
+  const { currentThreadId } = useAgenticThreads();
+  const pendingApprovals2 = usePendingApprovals();
+  const chat = getChatService();
+  (0, import_react16.useEffect)(() => {
+    const t = window.setTimeout(() => void chat.loadJiraTicketsInChat(), 400);
+    return () => window.clearTimeout(t);
+  }, []);
+  const thread = chat.getCurrentThread();
+  const threadId = currentThreadId;
+  return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "agentic-root agentic-root--jira-rail", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "agentic-top", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("header", { className: "agentic-header agentic-header--compact", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("h1", { className: "agentic-header__title", children: "Composer \xB7 JIRA" }),
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+            "aria-expanded": settingsOpen,
+            onClick: () => setSettingsOpen((o) => !o),
+            children: "Settings"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(AgenticSettingsPanel, { open: settingsOpen, onClose: () => setSettingsOpen(false) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "agentic-main agentic-main--jira-rail", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(JiraWorkspace, {}, threadId ?? "none") }),
+    pendingApprovals2.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "agentic-approvals", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(
+      ApprovalPanel,
+      {
+        requests: pendingApprovals2.filter(
+          (r) => !thread?.messages.some((m) => m.decision?.approvalId === r.id && !m.decision?.resolved)
+        ),
+        onApprove: (id) => chat.approveEdit(id),
+        onReject: (id) => chat.rejectEdit(id)
+      }
+    ) })
+  ] });
+}
+
+// src/components/CodebaseGraphPanel.tsx
+var import_react17 = __toESM(require_react());
+
+// src/util/graphLayout.ts
+var MAX_NODES = 120;
+function computeForceLayout(nodeIds, edges, width, height, seed = 1) {
+  const ids = nodeIds.slice(0, MAX_NODES);
+  const positions = /* @__PURE__ */ new Map();
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(width, height) * 0.36;
+  for (let i = 0; i < ids.length; i++) {
+    const angle = i / Math.max(ids.length, 1) * Math.PI * 2 + seed * 0.17;
+    const r = radius * (0.55 + i % 5 * 0.08);
+    positions.set(ids[i], {
+      id: ids[i],
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      vx: 0,
+      vy: 0
+    });
+  }
+  const idSet = new Set(ids);
+  const layoutEdges = edges.filter((e) => idSet.has(e.from) && idSet.has(e.to)).slice(0, 200);
+  const nodes = [...positions.values()];
+  for (let iter = 0; iter < 80; iter++) {
+    const alpha = 1 - iter / 80;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        let dx = a.x - b.x;
+        let dy = a.y - b.y;
+        let dist = Math.hypot(dx, dy) || 1;
+        const repulse = 900 * alpha / dist;
+        dx = dx / dist * repulse;
+        dy = dy / dist * repulse;
+        a.vx += dx;
+        a.vy += dy;
+        b.vx -= dx;
+        b.vy -= dy;
+      }
+    }
+    for (const e of layoutEdges) {
+      const a = positions.get(e.from);
+      const b = positions.get(e.to);
+      if (!a || !b) {
+        continue;
+      }
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      let dist = Math.hypot(dx, dy) || 1;
+      const pull = (dist - 72) * 0.04 * alpha;
+      dx = dx / dist * pull;
+      dy = dy / dist * pull;
+      a.vx += dx;
+      a.vy += dy;
+      b.vx -= dx;
+      b.vy -= dy;
+    }
+    for (const n of nodes) {
+      n.vx += (cx - n.x) * 2e-3 * alpha;
+      n.vy += (cy - n.y) * 2e-3 * alpha;
+      n.vx *= 0.85;
+      n.vy *= 0.85;
+      n.x += n.vx;
+      n.y += n.vy;
+      n.x = Math.max(24, Math.min(width - 24, n.x));
+      n.y = Math.max(24, Math.min(height - 24, n.y));
+    }
+  }
+  const out = /* @__PURE__ */ new Map();
+  for (const n of nodes) {
+    out.set(n.id, { x: n.x, y: n.y });
+  }
+  return out;
+}
+
+// src/components/CodebaseGraphPanel.tsx
+var import_jsx_runtime34 = __toESM(require_jsx_runtime());
+var NODE_RADIUS = {
+  workspace: 14,
+  package: 10,
+  directory: 9,
+  file: 7
+};
+var NODE_FILL = {
+  workspace: "#3b82f6",
+  package: "#8b5cf6",
+  directory: "#22c55e",
+  file: "#f97316"
+};
+var EDGE_STROKE = {
+  contains: "rgba(120,120,130,0.45)",
+  imports: "rgba(239,68,68,0.65)",
+  related: "rgba(59,130,246,0.5)"
+};
+function formatWhen(ts) {
+  try {
+    return new Date(ts).toLocaleString(void 0, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  } catch {
+    return String(ts);
+  }
+}
+function nodeKindLabel(kind) {
+  switch (kind) {
+    case "workspace":
+      return "Workspace";
+    case "package":
+      return "Package";
+    case "directory":
+      return "Directory";
+    case "file":
+      return "File";
+  }
+}
+function edgeKindLabel(kind) {
+  switch (kind) {
+    case "contains":
+      return "CONTAINS";
+    case "imports":
+      return "IMPORTS";
+    case "related":
+      return "RELATED";
+  }
+}
+function NodeDetails({
+  node,
+  kg,
+  edges,
+  onClose
+}) {
+  const connected = edges.filter((e) => e.from === node.id || e.to === node.id).slice(0, 12);
+  const areas = node.kind === "workspace" ? kg.areas.slice(0, 6) : [];
+  return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("aside", { className: "agentic-kg-details", role: "dialog", "aria-label": "Node details", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "agentic-kg-details__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h3", { children: "Node Details" }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("span", { className: `agentic-kg-details__kind agentic-kg-details__kind--${node.kind}`, children: nodeKindLabel(node.kind) }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("button", { type: "button", className: "agentic-kg-details__close", onClick: onClose, "aria-label": "Close", children: "\xD7" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("dl", { className: "agentic-kg-details__list", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "Name" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { children: node.label })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "ID" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { className: "agentic-kg-details__mono", children: node.id })
+      ] }),
+      node.path && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "Path" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { className: "agentic-kg-details__mono", children: node.path })
+      ] }),
+      node.role && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "Role" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { children: node.role })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "Graph updated" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { children: formatWhen(kg.generatedAt) })
+      ] }),
+      kg.revision != null && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dt", { children: "Revision" }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("dd", { children: kg.revision })
+      ] })
+    ] }),
+    areas.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("section", { className: "agentic-kg-details__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h4", { children: "Repository areas" }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("ul", { children: areas.map((a) => /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("li", { children: a }, a)) })
+    ] }),
+    connected.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("section", { className: "agentic-kg-details__section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h4", { children: "Relationships" }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("ul", { className: "agentic-kg-details__rels", children: connected.map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("span", { className: "agentic-kg-details__edge-kind", children: edgeKindLabel(e.kind) }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("span", { children: e.from === node.id ? `\u2192 ${e.to}` : `\u2190 ${e.from}` })
+      ] }, `${e.from}-${e.to}-${e.kind}-${i}`)) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "agentic-kg-details__labels", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("span", { className: "agentic-kg-details__pill", children: "Entity" }),
+      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("span", { className: "agentic-kg-details__pill", children: nodeKindLabel(node.kind) })
+    ] })
+  ] });
+}
+function CodebaseGraphPanel() {
+  const hasWorkspace2 = useHasWorkspace();
+  const { graph, loading, error } = useKnowledgeGraph();
+  const [selectedId, setSelectedId] = (0, import_react17.useState)(null);
+  const [refreshing, setRefreshing] = (0, import_react17.useState)(false);
+  const [fullscreen, setFullscreen] = (0, import_react17.useState)(false);
+  const wrapRef = (0, import_react17.useRef)(null);
+  const [size, setSize] = (0, import_react17.useState)({ w: 640, h: 420 });
+  (0, import_react17.useEffect)(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (cr) {
+        setSize({ w: Math.max(320, cr.width), h: Math.max(280, cr.height) });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const refresh = (0, import_react17.useCallback)(async () => {
+    setRefreshing(true);
+    try {
+      await getKnowledgeGraphService().getOrBuild("", { forceRefresh: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+  const layout = (0, import_react17.useMemo)(() => {
+    if (!graph) {
+      return null;
+    }
+    const nodeIds = graph.nodes.map((n) => n.id);
+    const simpleEdges = graph.edges.map((e) => ({ from: e.from, to: e.to }));
+    return computeForceLayout(nodeIds, simpleEdges, size.w, size.h, graph.revision ?? 1);
+  }, [graph, size.w, size.h]);
+  const selectedNode = graph?.nodes.find((n) => n.id === selectedId) ?? null;
+  if (!hasWorkspace2) {
+    return /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("div", { className: "agentic-kg-root agentic-kg-root--empty", children: /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("p", { children: "Open a folder to map the codebase knowledge graph." }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)(
+    "div",
+    {
+      className: `agentic-kg-root${fullscreen ? " agentic-kg-root--fullscreen" : ""}`,
+      ref: wrapRef,
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("header", { className: "agentic-kg-header", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h2", { className: "agentic-kg-header__title", children: "Codebase Knowledge Graph" }),
+            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("p", { className: "agentic-kg-header__sub", children: "Entities, imports, and structure \u2014 learns over time as the repo is scanned" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "agentic-kg-header__actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+                disabled: refreshing || loading,
+                onClick: () => void refresh(),
+                children: refreshing || loading ? "Refreshing\u2026" : "Refresh"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "agentic-btn agentic-btn-ghost agentic-btn--sm",
+                onClick: () => setFullscreen((f) => !f),
+                title: fullscreen ? "Exit full screen" : "Full screen",
+                children: fullscreen ? "Exit" : "Full screen"
+              }
+            )
+          ] })
+        ] }),
+        error && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("div", { className: "agentic-kg-error", children: error }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "agentic-kg-canvas-wrap", children: [
+          !graph && loading && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("div", { className: "agentic-kg-loading", children: "Mapping repository structure\u2026" }),
+          graph && layout && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)(
+            "svg",
+            {
+              className: "agentic-kg-svg",
+              width: size.w,
+              height: size.h,
+              viewBox: `0 0 ${size.w} ${size.h}`,
+              role: "img",
+              "aria-label": "Codebase relationship graph",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("pattern", { id: "agentic-kg-grid", width: "24", height: "24", patternUnits: "userSpaceOnUse", children: /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("path", { d: "M 24 0 L 0 0 0 24", fill: "none", stroke: "rgba(128,128,128,0.12)", strokeWidth: "1" }) }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("rect", { width: "100%", height: "100%", fill: "url(#agentic-kg-grid)" }),
+                graph.edges.map((e, i) => {
+                  const from = layout.get(e.from);
+                  const to = layout.get(e.to);
+                  if (!from || !to) {
+                    return null;
+                  }
+                  const midX = (from.x + to.x) / 2;
+                  const midY = (from.y + to.y) / 2;
+                  const showLabel = e.kind === "imports" && i % 3 === 0;
+                  return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("g", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+                      "line",
+                      {
+                        x1: from.x,
+                        y1: from.y,
+                        x2: to.x,
+                        y2: to.y,
+                        stroke: EDGE_STROKE[e.kind],
+                        strokeWidth: e.kind === "imports" ? 1.2 : 0.9,
+                        strokeDasharray: e.kind === "related" ? "4 3" : void 0
+                      }
+                    ),
+                    showLabel && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+                      "text",
+                      {
+                        x: midX,
+                        y: midY,
+                        className: "agentic-kg-edge-label",
+                        textAnchor: "middle",
+                        children: edgeKindLabel(e.kind)
+                      }
+                    )
+                  ] }, `${e.from}-${e.to}-${e.kind}-${i}`);
+                }),
+                graph.nodes.map((n) => {
+                  const pos = layout.get(n.id);
+                  if (!pos) {
+                    return null;
+                  }
+                  const r = NODE_RADIUS[n.kind];
+                  const active = selectedId === n.id;
+                  return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)(
+                    "g",
+                    {
+                      className: `agentic-kg-node${active ? " agentic-kg-node--active" : ""}`,
+                      style: { cursor: "pointer" },
+                      onClick: () => setSelectedId(n.id),
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+                          "circle",
+                          {
+                            cx: pos.x,
+                            cy: pos.y,
+                            r: r + (active ? 3 : 0),
+                            fill: NODE_FILL[n.kind],
+                            stroke: active ? "#fff" : "rgba(0,0,0,0.2)",
+                            strokeWidth: active ? 2 : 1
+                          }
+                        ),
+                        (n.kind === "workspace" || n.kind === "directory" || active) && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("text", { x: pos.x, y: pos.y + r + 12, className: "agentic-kg-node-label", textAnchor: "middle", children: n.label.length > 28 ? `${n.label.slice(0, 26)}\u2026` : n.label })
+                      ]
+                    },
+                    n.id
+                  );
+                })
+              ]
+            }
+          ),
+          selectedNode && graph && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(
+            NodeDetails,
+            {
+              node: selectedNode,
+              kg: graph,
+              edges: graph.edges,
+              onClose: () => setSelectedId(null)
+            }
+          )
+        ] }),
+        graph && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("footer", { className: "agentic-kg-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
+            graph.nodes.length,
+            " nodes"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
+            graph.edges.length,
+            " edges"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
+            "Updated ",
+            formatWhen(graph.generatedAt)
+          ] }),
+          graph.revision != null && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
+            "Rev ",
+            graph.revision
+          ] }),
+          (graph.history?.length ?? 0) > 1 && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { className: "agentic-kg-footer__learn", children: [
+            "Learning +",
+            (graph.history?.at(-1)?.nodeCount ?? 0) - (graph.history?.[0]?.nodeCount ?? 0),
+            " nodes"
+          ] })
+        ] })
+      ]
+    }
+  );
 }
 
 // src/agentic-tsx/index.tsx
 var mountAgenticView = mountFnGenerator(AgenticChat);
+var mountJiraView = mountFnGenerator(JiraPanel);
+var mountCodebaseGraphView = mountFnGenerator(CodebaseGraphPanel);
 /*! Bundled license information:
 
 react/cjs/react.development.js:
@@ -20620,4 +22769,4 @@ react-dom/cjs/react-dom-client.development.js:
    *)
 */
 
-export { mountAgenticView };
+export { _registerAgenticServices, mountAgenticView, mountCodebaseGraphView, mountJiraView, useHasWorkspace, useKnowledgeGraph };

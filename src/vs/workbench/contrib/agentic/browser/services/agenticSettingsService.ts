@@ -56,7 +56,18 @@ class AgenticSettingsService extends Disposable implements IAgenticSettingsServi
 			return;
 		}
 		try {
-			this._settings = mergeAgenticSettings(JSON.parse(raw));
+			const before = JSON.parse(raw) as AgenticSettings;
+			const prevRev = before.settingsRevision ?? 1;
+			const parsed = mergeAgenticSettings(before);
+			this._settings = parsed;
+			if ((parsed.settingsRevision ?? 1) !== prevRev) {
+				this.storageService.store(
+					AGENTIC_SETTINGS_STORAGE_KEY,
+					JSON.stringify(this._settings),
+					StorageScope.APPLICATION,
+					StorageTarget.USER,
+				);
+			}
 		} catch {
 			this._settings = { ...DEFAULT_AGENTIC_SETTINGS };
 		}

@@ -8,15 +8,18 @@ import { getToolDefinition } from '../../common/toolTypes.js';
 import { validateToolArgs, stringifyToolResult } from '../../common/toolValidation.js';
 import { classifyTool } from '../../common/toolPermission.js';
 import { agenticLog } from '../../common/agenticObservability.js';
-import { readFileTool, listFilesTool, searchFilesTool } from './fileTools.js';
+import { readFileTool, listFilesTool, searchFilesTool, writeFileTool } from './fileTools.js';
 import { grepTool } from './searchTools.js';
 import { buildEditPreview } from './editTools.js';
 import { runTerminalCommandTool } from './terminalTools.js';
-import { createCheckpoint } from '../checkpoints/checkpointService.js';
+import { checkTerminalCommandSafety } from '../runtime/terminalSafety.js';
+import { createCheckpoint, restoreCheckpoint } from '../checkpoints/checkpointService.js';
 import { extractSymbolsLexical } from '../../common/codeIntelligenceTypes.js';
 import type { SerializableMcpTool } from '../../common/mcp/agenticMcpTypes.js';
 import { isAgenticMcpTool, executeMcpAgenticTool } from '../mcp/executeMcpTool.js';
 import { executeJiraVirtualTool, isJiraVirtualToolName } from '../mcp/jiraVirtualTools.js';
+import { readLintErrorsViaRenderer } from '../rendererToolsAccess.js';
+import { coerceSearchReplaceBlocks, coerceWriteFileContent } from '../../common/writeFileContent.js';
 
 export interface ToolExecutionContext {
 	workspaceRoot: string;
@@ -32,6 +35,10 @@ export async function executeAnyAgenticTool(
 ): Promise<{ content: string; isError: boolean }> {
 	if (isJiraVirtualToolName(name)) {
 		return executeJiraVirtualTool(name, args, ctx.mcpTools, ctx.atlassianEnv, ctx.runId);
+	}
+	// Built-in file/terminal tools must win over MCP tools with the same name (MCP read_file often returns garbage).
+	if (getToolDefinition(name)) {
+		return executeAgenticTool(ctx, name, args);
 	}
 	if (isAgenticMcpTool(name, ctx.mcpTools)) {
 		return executeMcpAgenticTool(ctx.mcpTools, name, args, ctx.runId);
@@ -103,18 +110,40 @@ async function runToolImpl(workspaceRoot: string, name: string, args: Record<str
 			const symbols = extractSymbolsLexical(content.slice(0, 512_000), lang);
 			return JSON.stringify(symbols.slice(0, 100), null, 2);
 		}
+		case 'read_lint_errors':
+			return readLintErrorsViaRenderer(String(args.path ?? ''));
+		case 'write_file':
+			return writeFileTool(workspaceRoot, String(args.path ?? ''), coerceWriteFileContent(args.content));
 		case 'propose_file_edit': {
-			const preview = buildEditPreview(String(args.path ?? ''), String(args.searchReplaceBlocks ?? ''));
+			const blocks = coerceSearchReplaceBlocks(args.searchReplaceBlocks);
+			const preview = buildEditPreview(String(args.path ?? ''), blocks);
 			return preview.previewSummary;
 		}
 		case 'apply_file_edit':
 			return `Applied edit to ${args.path} (approval ${args.approvalId})`;
 		case 'create_checkpoint': {
-			const { checkpointId } = createCheckpoint(workspaceRoot, String(args.label ?? 'checkpoint'), []);
-			return `Checkpoint created: ${checkpointId}`;
+			const paths = Array.isArray(args.paths)
+				? (args.paths as unknown[]).map(p => String(p ?? '')).filter(Boolean)
+				: [];
+			const { checkpointId, fileCount } = createCheckpoint(
+				workspaceRoot,
+				String(args.label ?? 'checkpoint'),
+				paths,
+			);
+			return `Checkpoint created: ${checkpointId} (${fileCount} file${fileCount === 1 ? '' : 's'})`;
 		}
-		case 'run_terminal_command':
-			return JSON.stringify(await runTerminalCommandTool(workspaceRoot, String(args.command ?? '')));
+		case 'restore_checkpoint': {
+			const result = restoreCheckpoint(workspaceRoot, String(args.checkpointId ?? ''));
+			return result.message;
+		}
+		case 'run_terminal_command': {
+			const command = String(args.command ?? '');
+			const safety = checkTerminalCommandSafety(command);
+			if (!safety.allowed) {
+				return JSON.stringify({ error: safety.reason, exitCode: 1, stdout: '', stderr: safety.reason ?? 'blocked' });
+			}
+			return JSON.stringify(await runTerminalCommandTool(workspaceRoot, command));
+		}
 		default:
 			return `Unknown tool: ${name}`;
 	}

@@ -56,6 +56,7 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
+import { _registerAgenticServices } from '../../../../../agentic/browser/react/out/agentic-tsx/index.js'
 
 
 // normally to do this you'd use a useEffect that calls .onDidChangeState(), but useEffect mounts too late and misses initial state changes
@@ -178,6 +179,7 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		})
 	)
 
+	disposables.push(..._registerAgenticServices(accessor))
 
 	return disposables
 }
@@ -242,9 +244,22 @@ type ReactAccessor = ReturnType<typeof getReactAccessor>
 
 
 let reactAccessor_: ReactAccessor | null = null
+let servicesAccessor_: ServicesAccessor | null = null
+
+let hasWorkspace = false
+const hasWorkspaceListeners = new Set<() => void>()
+
 const _registerAccessor = (accessor: ServicesAccessor) => {
+	servicesAccessor_ = accessor
 	const reactAccessor = getReactAccessor(accessor)
 	reactAccessor_ = reactAccessor
+	const workspace = accessor.get(IWorkspaceContextService)
+	const syncHasWorkspace = () => {
+		hasWorkspace = workspace.getWorkspace().folders.length > 0
+		hasWorkspaceListeners.forEach(l => l())
+	}
+	syncHasWorkspace()
+	workspace.onDidChangeWorkspaceFolders(syncHasWorkspace)
 }
 
 // -- services --
@@ -254,6 +269,24 @@ export const useAccessor = () => {
 	}
 
 	return { get: <S extends keyof ReactAccessor,>(service: S): ReactAccessor[S] => reactAccessor_![service] }
+}
+
+/** Raw VS Code accessor for agentic mount helpers (graph, etc.). */
+export function getWorkbenchAccessor(): ServicesAccessor {
+	if (!servicesAccessor_) {
+		throw new Error('Workbench accessor not initialized — open the Agentic AI sidebar first')
+	}
+	return servicesAccessor_
+}
+
+export function useHasWorkspace(): boolean {
+	const [, setTick] = useState(0)
+	useEffect(() => {
+		const l = () => setTick(t => t + 1)
+		hasWorkspaceListeners.add(l)
+		return () => { hasWorkspaceListeners.delete(l) }
+	}, [])
+	return hasWorkspace
 }
 
 

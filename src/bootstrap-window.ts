@@ -35,8 +35,9 @@
 		setupCSSImportMaps<T>(configuration, baseUrl);
 
 		// ESM Import
+		const moduleUrl = new URL(`${esModule}.js`, baseUrl).href;
 		try {
-			const result = await import(new URL(`${esModule}.js`, baseUrl).href);
+			const result = await import(moduleUrl);
 
 			if (developerDeveloperKeybindingsDisposable && removeDeveloperKeybindingsAfterLoad) {
 				developerDeveloperKeybindingsDisposable();
@@ -44,9 +45,15 @@
 
 			return { result, configuration };
 		} catch (error) {
-			onUnexpectedError(error, enableDeveloperKeybindings && !forceDisableShowDevtoolsOnError);
+			const hint = safeProcess.env['VSCODE_DEV']
+				? `\n\nDev recovery (quit all app windows first):\n  npm run compile\n  npm run buildreact\n  ./scripts/code.sh --user-data-dir ./.tmp/user-data --extensions-dir ./.tmp/extensions\n\nTried: ${moduleUrl}\nappRoot: ${configuration.appRoot}`
+				: '';
+			const wrapped = error instanceof Error
+				? new Error(`${error.message}${hint}`, { cause: error })
+				: new Error(`${String(error)}${hint}`);
+			onUnexpectedError(wrapped, enableDeveloperKeybindings && !forceDisableShowDevtoolsOnError);
 
-			throw error;
+			throw wrapped;
 		}
 	}
 
@@ -204,10 +211,16 @@
 
 			const importMap: { imports: Record<string, string> } = { imports: {} };
 			for (const cssModule of configuration.cssModules) {
+				if (!cssModule?.trim() || !/\.css$/i.test(cssModule)) {
+					continue;
+				}
 				const cssUrl = new URL(cssModule, baseUrl).href;
+				if (cssUrl.endsWith('/')) {
+					continue;
+				}
 				const jsSrc = `globalThis._VSCODE_CSS_LOAD('${cssUrl}');\n`;
-				const blob = new Blob([jsSrc], { type: 'application/javascript' });
-				importMap.imports[cssUrl] = URL.createObjectURL(blob);
+				// data: URLs — Electron 34+ blocks blob:nodedata: shims ("Not allowed to load local resource")
+				importMap.imports[cssUrl] = `data:application/javascript,${encodeURIComponent(jsSrc)}`;
 			}
 
 			const ttp = window.trustedTypes?.createPolicy('vscode-bootstrapImportMap', { createScript(value) { return value; }, });

@@ -47,6 +47,8 @@ export const ATLASSIAN_MCP_CONFIG_EXAMPLE = {
 				ATLASSIAN_EMAIL: 'your.email@example.com',
 				ATLASSIAN_API_TOKEN: 'paste-api-token-here',
 				ATLASSIAN_SITE: 'https://your-site.atlassian.net',
+				/** Optional: default JIRA project key for ticket list JQL (e.g. KAN) */
+				ATLASSIAN_PROJECT: 'KAN',
 			},
 		},
 		// OAuth via mcp-remote (browser consent):

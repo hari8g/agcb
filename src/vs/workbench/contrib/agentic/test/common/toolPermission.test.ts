@@ -26,4 +26,29 @@ suite('Agentic toolPermission', () => {
 		const opts = { autoRunReadOnlyTools: true, requireApprovalForEdits: false };
 		assert.strictEqual(requiresUserApproval('run_terminal_command', opts), true);
 	});
+
+	test('write_file skips approval when edits not gated', () => {
+		const opts = { autoRunReadOnlyTools: true, requireApprovalForEdits: false };
+		assert.strictEqual(
+			requiresUserApproval('write_file', opts, getToolDefinition('write_file')),
+			false,
+		);
+	});
+
+	test('JIRA virtual read tools auto-run when read-only auto enabled', () => {
+		const opts = { autoRunReadOnlyTools: true, requireApprovalForEdits: true, requireApprovalForMcpTools: true };
+		assert.strictEqual(requiresUserApproval('fetch_jira_issue', opts), false);
+		assert.strictEqual(canAutoExecute('fetch_jira_issue', opts), true);
+	});
+
+	test('MCP read heuristic skips approval when only writes gated', () => {
+		const opts = {
+			autoRunReadOnlyTools: true,
+			requireApprovalForEdits: true,
+			requireApprovalForMcpTools: false,
+			requireApprovalForMcpWrites: true,
+		};
+		assert.strictEqual(requiresUserApproval('jira_search_issues', opts, undefined, true), false);
+		assert.strictEqual(requiresUserApproval('jira_update_issue', opts, undefined, true), true);
+	});
 });

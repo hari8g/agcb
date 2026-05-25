@@ -12,7 +12,12 @@ import type {
 	MainStartRunParams,
 } from '../common/agenticProtocol.js';
 import { abortLocalRun, resolveApprovalAndContinue, runLocalAgent } from './runtime/localAgentRuntime.js';
+import { queueRunMessageInject } from './runtime/runMessageInject.js';
+import type { MainInjectRunMessageParams, MainRestoreCheckpointParams, MainRestoreCheckpointResult } from '../common/agenticProtocol.js';
+import { exportCheckpointSnapshot, restoreCheckpoint } from './checkpoints/checkpointService.js';
+import type { MainGetCheckpointSnapshotParams } from '../common/agenticProtocol.js';
 import { ExternalAgentRuntimeClient } from './runtime/externalAgentRuntimeClient.js';
+import { pushAgenticLogSink } from '../common/agenticObservability.js';
 
 export class AgenticRuntimeChannel implements IServerChannel {
 	private readonly onAgentEvent = new Emitter<EventAgentEventParams>();
@@ -43,6 +48,19 @@ export class AgenticRuntimeChannel implements IServerChannel {
 					(params as MainResolveApprovalParams).decision === 'approved' ? 'approved' : 'rejected',
 				);
 				return;
+			case 'injectRunMessage': {
+				const p = params as MainInjectRunMessageParams;
+				queueRunMessageInject(p.requestId, { role: 'user', content: p.content });
+				return;
+			}
+			case 'restoreCheckpoint': {
+				const p = params as MainRestoreCheckpointParams;
+				return restoreCheckpoint(p.workspaceFolder, p.checkpointId) satisfies MainRestoreCheckpointResult;
+			}
+			case 'getCheckpointSnapshot': {
+				const p = params as MainGetCheckpointSnapshotParams;
+				return exportCheckpointSnapshot(p.checkpointId);
+			}
 			default:
 				throw new Error(`Agentic channel command not found: ${command}`);
 		}
@@ -53,6 +71,22 @@ export class AgenticRuntimeChannel implements IServerChannel {
 		const emit = (event: EventAgentEventParams['event']) => {
 			this.onAgentEvent.fire({ requestId, event });
 		};
+
+		const logSink = pushAgenticLogSink(ev => {
+			emit({
+				type: 'workflow_log',
+				runId: request.runId,
+				timestamp: Date.now(),
+				payload: {
+					kind: ev.kind,
+					threadId: ev.threadId,
+					toolName: ev.toolName,
+					message: ev.message,
+					durationMs: ev.durationMs,
+					meta: ev.meta,
+				},
+			});
+		});
 
 		const run = async () => {
 			try {
@@ -75,6 +109,8 @@ export class AgenticRuntimeChannel implements IServerChannel {
 					message: e instanceof Error ? e.message : String(e),
 					fullError: e instanceof Error ? e.stack : undefined,
 				});
+			} finally {
+				logSink.dispose();
 			}
 		};
 

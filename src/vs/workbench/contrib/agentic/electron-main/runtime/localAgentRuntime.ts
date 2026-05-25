@@ -5,6 +5,7 @@
 import type { AgentEvent } from '../../common/agenticTypes.js';
 import type { RuntimeRequest } from '../../common/llmMessageTypes.js';
 import { runAgentLoop, continueAfterApproval } from './agentLoop.js';
+import { clearRunMessageInjects } from './runMessageInject.js';
 
 type EmitFn = (event: AgentEvent) => void;
 
@@ -13,6 +14,7 @@ const activeRuns = new Map<string, AbortController>();
 export function abortLocalRun(requestId: string): void {
 	activeRuns.get(requestId)?.abort();
 	activeRuns.delete(requestId);
+	clearRunMessageInjects(requestId);
 }
 
 export async function runLocalAgent(
@@ -38,6 +40,7 @@ export async function runLocalAgent(
 		ev('run_failed', { message: e instanceof Error ? e.message : String(e) });
 	} finally {
 		activeRuns.delete(requestId);
+		clearRunMessageInjects(requestId);
 	}
 }
 

@@ -15,7 +15,12 @@ import {
 	EventAgentEventParams,
 	EventRunErrorParams,
 	MainAbortRunParams,
+	MainInjectRunMessageParams,
 	MainResolveApprovalParams,
+	MainGetCheckpointSnapshotParams,
+	MainGetCheckpointSnapshotResult,
+	MainRestoreCheckpointParams,
+	MainRestoreCheckpointResult,
 	MainStartRunParams,
 	ServiceResolveApprovalParams,
 	ServiceStartRunParams,
@@ -28,6 +33,11 @@ export interface IAgenticRuntimeService {
 	startRun(params: ServiceStartRunParams): string;
 	abort(requestId: string): void;
 	resolveApproval(params: ServiceResolveApprovalParams): void;
+	/** Push an orchestrator message into an active run (e.g. post-edit lint). */
+	injectRunMessage(requestId: string, content: string): void;
+	/** Restore files from a main-process checkpoint snapshot. */
+	restoreCheckpoint(checkpointId: string, workspaceFolder: string): Promise<MainRestoreCheckpointResult>;
+	getCheckpointSnapshot(checkpointId: string): Promise<MainGetCheckpointSnapshotResult>;
 }
 
 export class AgenticRuntimeService extends Disposable implements IAgenticRuntimeService {
@@ -79,6 +89,21 @@ export class AgenticRuntimeService extends Disposable implements IAgenticRuntime
 			decision: params.decision,
 		};
 		void this.channel.call('resolveApproval', mainParams);
+	}
+
+	injectRunMessage(requestId: string, content: string): void {
+		const mainParams: MainInjectRunMessageParams = { requestId, content };
+		void this.channel.call('injectRunMessage', mainParams);
+	}
+
+	restoreCheckpoint(checkpointId: string, workspaceFolder: string): Promise<MainRestoreCheckpointResult> {
+		const mainParams: MainRestoreCheckpointParams = { checkpointId, workspaceFolder };
+		return this.channel.call('restoreCheckpoint', mainParams) as Promise<MainRestoreCheckpointResult>;
+	}
+
+	getCheckpointSnapshot(checkpointId: string): Promise<MainGetCheckpointSnapshotResult> {
+		const mainParams: MainGetCheckpointSnapshotParams = { checkpointId };
+		return this.channel.call('getCheckpointSnapshot', mainParams) as Promise<MainGetCheckpointSnapshotResult>;
 	}
 
 	private _clearHooks(requestId: string) {

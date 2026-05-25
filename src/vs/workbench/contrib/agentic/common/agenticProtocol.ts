@@ -8,11 +8,17 @@ import type { ApprovalDecision } from './agenticTypes.js';
 
 export const AGENTIC_CHANNEL_NAME = 'agentic-channel-runtime';
 
+/** Workbench channel: main → renderer for lint and other IDE-bound tools */
+export const AGENTIC_RENDERER_TOOLS_CHANNEL = 'agentic-renderer-tools';
+
 // Commands (browser → main)
 export type MainAgenticCommand =
 	| 'startRun'
 	| 'abortRun'
-	| 'resolveApproval';
+	| 'resolveApproval'
+	| 'injectRunMessage'
+	| 'restoreCheckpoint'
+	| 'getCheckpointSnapshot';
 
 export interface MainStartRunParams {
 	requestId: string;
@@ -28,6 +34,35 @@ export interface MainResolveApprovalParams {
 	runId: string;
 	approvalId: string;
 	decision: ApprovalDecision;
+}
+
+/** Browser → main: inject an orchestrator user turn into a running agent loop */
+export interface MainInjectRunMessageParams {
+	requestId: string;
+	content: string;
+}
+
+/** Browser → main: restore workspace files from an agent checkpoint snapshot */
+export interface MainRestoreCheckpointParams {
+	checkpointId: string;
+	workspaceFolder: string;
+}
+
+export interface MainRestoreCheckpointResult {
+	ok: boolean;
+	message: string;
+	restoredPaths: string[];
+}
+
+export interface MainGetCheckpointSnapshotParams {
+	checkpointId: string;
+}
+
+export interface MainGetCheckpointSnapshotResult {
+	found: boolean;
+	checkpointId: string;
+	createdAt: number;
+	files: { path: string; content: string }[];
 }
 
 // Events (main → browser)

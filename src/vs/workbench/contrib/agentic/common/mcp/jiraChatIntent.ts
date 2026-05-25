@@ -35,12 +35,18 @@ const ACCEPT_PATTERNS = [
 	/\bapprove\s+(the\s+)?workflow\b/i,
 	/\brun\s+(the\s+)?workflow\b/i,
 	/\bexecute\s+(the\s+)?workflow\b/i,
+	/\bproceed\s+(with\s+)?(the\s+)?(plan|workflow)\b/i,
+	/\bgo\s+ahead\b/i,
+	/^\s*(yes|y|ok|okay|sure|do\s+it|lgtm)\s*$/i,
+	/^\s*(yes|ok|sure)\s*,?\s*(proceed|go\s+ahead|please)?\s*$/i,
 ];
 
 const DECLINE_PATTERNS = [
 	/\bdecline\s+(the\s+)?workflow\b/i,
 	/\breject\s+(the\s+)?workflow\b/i,
 	/\bcancel\s+(the\s+)?workflow\b/i,
+	/^\s*(no|n|cancel|stop|decline|reject)\s*$/i,
+	/^\s*no\s*,?\s*(thanks|decline|cancel)?\s*$/i,
 ];
 
 const REGENERATE_PATTERNS = [
@@ -48,8 +54,13 @@ const REGENERATE_PATTERNS = [
 	/\bnew\s+workflow\s+plan\b/i,
 ];
 
+export interface JiraChatIntentContext {
+	/** Plan is ready and workflow is waiting for Proceed / Decline */
+	awaitingWorkflowDecision?: boolean;
+}
+
 /** True when the user is asking for JIRA UI in chat (skip generic agent run). */
-export function detectJiraChatIntent(text: string): JiraChatIntent | null {
+export function detectJiraChatIntent(text: string, ctx?: JiraChatIntentContext): JiraChatIntent | null {
 	const raw = text.trim();
 	if (!raw) {
 		return null;
@@ -63,6 +74,16 @@ export function detectJiraChatIntent(text: string): JiraChatIntent | null {
 	}
 	if (ACCEPT_PATTERNS.some(p => p.test(raw))) {
 		return { kind: 'accept_workflow' };
+	}
+
+	// Short affirmatives while a plan is on screen (maps to Proceed button)
+	if (ctx?.awaitingWorkflowDecision) {
+		if (/^\s*(yes|y|ok|okay|sure|proceed|go\s+ahead|continue|do\s+it)\s*$/i.test(raw)) {
+			return { kind: 'accept_workflow' };
+		}
+		if (/^\s*(no|n|cancel|stop|decline)\s*$/i.test(raw)) {
+			return { kind: 'decline_workflow' };
+		}
 	}
 	if (/^refresh\s+(open\s+)?jira/i.test(raw)) {
 		return { kind: 'refresh_list' };

@@ -49,6 +49,17 @@ Use registry tools: **fetch_jira_issue**, **search_jira_issues**, **comment_on_j
 Use built-in workspace tools for code and terminal operations.
 Never invent ticket content — fetch it first.`;
 
+export const JIRA_EXECUTION_RUN_PROMPT = `## JIRA execution run (approved plan)
+
+You are implementing an **approved JIRA plan**, not writing another plan.
+
+Rules:
+- **Turn 1–2:** list_workspace, grep/search_files, read_file on domain modules (seller, onboarding, admin, auth, API routes, pages).
+- **Then:** write_file / propose_file_edit for backend models, APIs, validation, frontend screens, and tests.
+- **Never** finish after only reading or editing package.json / lockfiles unless the ticket is explicitly dependency-only.
+- Emit \`\`\`json tool_call\`\`\` blocks every turn until implementation is done.
+- End with a short summary of files changed and how to verify.`;
+
 export function nextWorkflowStage(current: JiraWorkflowStage): JiraWorkflowStage {
 	const idx = JIRA_WORKFLOW_STAGES.indexOf(current);
 	if (idx < 0 || idx >= JIRA_WORKFLOW_STAGES.length - 1) {

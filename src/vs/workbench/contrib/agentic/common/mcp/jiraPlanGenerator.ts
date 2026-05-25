@@ -5,6 +5,7 @@
 import { classifyJiraTicketIntent, intentLabel } from './jiraToolRegistry.js';
 import type { JiraIssueContext } from './jiraTypes.js';
 import type { JiraTicket, JiraWorkflowPlan } from './jiraWorkflowTypes.js';
+import { discoverLikelyFilesForTicket, extractTicketSearchTerms } from './jiraWorkspaceDiscovery.js';
 
 export interface WorkspaceScanHint {
 	relativePaths: string[];
@@ -43,15 +44,8 @@ export function generateWorkflowPlan(ticket: JiraTicket, workspace: WorkspaceSca
 	if (workspace.isMonorepo) affectedAreas.push('monorepo root');
 	if (!affectedAreas.length) affectedAreas.push('workspace root');
 
-	const likelyFiles: string[] = [];
-	for (const p of workspace.relativePaths) {
-		if (/package\.json$/i.test(p)) likelyFiles.push(p);
-		if (/tsconfig.*\.json$/i.test(p)) likelyFiles.push(p);
-		if (/gulpfile|webpack|vite\.config/i.test(p)) likelyFiles.push(p);
-	}
-	if (likelyFiles.length > 8) {
-		likelyFiles.length = 8;
-	}
+	const likelyFiles = discoverLikelyFilesForTicket(ticket, workspace.relativePaths, { max: 20 });
+	const searchTerms = extractTicketSearchTerms(ticket);
 
 	const commandsToRun: string[] = [];
 	for (const [pkg, scripts] of Object.entries(workspace.packageJsonScripts)) {
@@ -67,13 +61,16 @@ export function generateWorkflowPlan(ticket: JiraTicket, workspace: WorkspaceSca
 	const implementationSteps: string[] = [
 		`Confirm ticket ${ticket.key} scope: ${ticket.summary}`,
 		'Read ticket description and acceptance criteria.',
+		'list_workspace or list_files at repo root — map folder structure before editing.',
+		`grep or search_files for: ${searchTerms.slice(0, 8).join(', ') || 'domain keywords from ticket'}.`,
+		'read_file on existing modules (models, routes, pages) — do NOT stop at package.json only.',
 	];
 	if (workspace.hasFrontend) {
-		implementationSteps.push('Inspect frontend/package.json scripts and entry points.');
+		implementationSteps.push('Inspect frontend entry points, routes/pages, and components for the feature.');
 		implementationSteps.push('Run frontend build after dependency or code changes.');
 	}
 	if (workspace.hasBackend) {
-		implementationSteps.push('Inspect backend/package.json or server entry.');
+		implementationSteps.push('Inspect backend models, APIs, validation, and admin routes.');
 		implementationSteps.push('Run backend build/start validation if applicable.');
 	}
 	if (/build|compile|webpack|gulp|npm/i.test(hay)) {
@@ -135,11 +132,26 @@ export function generateWorkflowPlan(ticket: JiraTicket, workspace: WorkspaceSca
 }
 
 export function buildExecutionUserPrompt(plan: JiraWorkflowPlan, ticket: JiraTicket): string {
+	const codePaths = plan.likelyFiles.filter(p => !/package\.json$/i.test(p)).slice(0, 12);
+	const configPaths = plan.likelyFiles.filter(p => /package\.json$/i.test(p)).slice(0, 4);
 	return [
-		`Execute the approved JIRA engineering workflow for ${plan.ticketKey}.`,
+		`[JIRA EXECUTION] ${plan.ticketKey}: implement the approved engineering plan with tools — no plan-only prose.`,
+		`Implement the approved engineering plan for JIRA ticket ${plan.ticketKey}.`,
 		'',
 		'## Problem',
 		plan.problemUnderstanding,
+		'',
+		'## Mandatory tool workflow (first 3 turns)',
+		'1. **list_workspace** or **list_files** — understand repo layout.',
+		'2. **grep** / **search_files** — find seller/onboarding/admin/auth modules from the ticket.',
+		'3. **read_file** on relevant source files (see paths below) — then **write_file** / **propose_file_edit** for real code.',
+		'',
+		codePaths.length
+			? `## Likely source paths to inspect\n${codePaths.map(p => `- ${p}`).join('\n')}`
+			: '## Likely source paths\n- Search the repo for modules matching ticket domain terms before editing.',
+		configPaths.length
+			? `\n## Config (scripts only — not sufficient alone)\n${configPaths.map(p => `- ${p}`).join('\n')}`
+			: '',
 		'',
 		'## Implementation steps',
 		...plan.implementationSteps.map((s, i) => `${i + 1}. ${s}`),
@@ -150,6 +162,7 @@ export function buildExecutionUserPrompt(plan: JiraWorkflowPlan, ticket: JiraTic
 		'## Validation',
 		...plan.validationCriteria.map(c => `- ${c}`),
 		'',
+		'Deliver backend + frontend + tests as described in the ticket. package.json-only changes are insufficient.',
 		`After success: comment on JIRA and transition toward "${plan.recommendedTransitionStatus}".`,
 		'',
 		`Ticket summary: ${ticket.summary}`,

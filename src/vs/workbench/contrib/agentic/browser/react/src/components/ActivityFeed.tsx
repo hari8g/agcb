@@ -1,35 +1,24 @@
-import React, { useEffect, useRef } from 'react';
-import type { ActivityLine, ChatMessage } from '../../../../common/agenticTypes.js';
+import React from 'react';
+import type { ChatMessage } from '../../../../common/agenticTypes.js';
+import { shouldShowActivityLine } from '../util/activityFilters.js';
 
-/** Natural-language activity stream shown directly under the user’s message */
+/** Orchestrator-only notices (tools use ToolStream). */
 export function ActivityFeed({ message }: { message: ChatMessage }) {
-	const bottomRef = useRef<HTMLDivElement>(null);
-	const lines = message.activityLines ?? [];
-	const isActive = message.state && !['complete', 'error', 'idle'].includes(message.state);
-
-	useEffect(() => {
-		bottomRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-	}, [lines.length, lines[lines.length - 1]?.text]);
-
-	if (!lines.length && !isActive) {
+	const lines = (message.activityLines ?? []).filter(shouldShowActivityLine);
+	if (!lines.length) {
 		return null;
 	}
 
 	return (
-		<div className="agentic-activity-feed" aria-live="polite" aria-busy={isActive}>
+		<div className="agentic-chat-activity" aria-live="polite">
 			{lines.map(line => (
 				<div
 					key={line.id}
-					className={`agentic-activity-line agentic-activity-line--${line.status}`}
+					className={`agentic-chat-activity__line agentic-chat-activity__line--${line.kind ?? 'status'}`}
 				>
-					<span className="agentic-activity-bullet" aria-hidden>›</span>
-					<span className="agentic-activity-text">{line.text}</span>
-					{line.status === 'streaming' && (
-						<span className="agentic-activity-cursor" aria-hidden />
-					)}
+					{line.text}
 				</div>
 			))}
-			<div ref={bottomRef} />
 		</div>
 	);
 }

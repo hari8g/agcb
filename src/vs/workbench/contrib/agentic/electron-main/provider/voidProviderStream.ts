@@ -25,11 +25,14 @@ function toVoidChatMessages(messages: LLMMessage[]): LLMChatMessage[] {
 	});
 }
 
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
+
 export async function streamViaVoidProvider(
 	voidProvider: VoidProviderConfig,
 	messages: LLMMessage[],
 	signal: AbortSignal,
 	callbacks: VoidStreamCallbacks,
+	timeoutMs: number = DEFAULT_STREAM_TIMEOUT_MS,
 ): Promise<void> {
 	const implementation = sendLLMMessageToProviderImplementation[voidProvider.providerName];
 	if (!implementation?.sendChat) {
@@ -39,10 +42,12 @@ export async function streamViaVoidProvider(
 
 	let fullTextSoFar = '';
 	let settled = false;
+	let clearStreamTimeout: (() => void) | undefined;
 
 	const finish = (fn: () => void) => {
 		if (settled) return;
 		settled = true;
+		clearStreamTimeout?.();
 		fn();
 	};
 
@@ -58,6 +63,14 @@ export async function streamViaVoidProvider(
 			return;
 		}
 		signal.addEventListener('abort', onAbort, { once: true });
+
+		const timeout = setTimeout(() => {
+			finish(() => {
+				callbacks.onError(`Model request timed out after ${timeoutMs}ms`);
+				resolve();
+			});
+		}, timeoutMs);
+		clearStreamTimeout = () => clearTimeout(timeout);
 
 		void implementation.sendChat({
 			messages: toVoidChatMessages(messages),

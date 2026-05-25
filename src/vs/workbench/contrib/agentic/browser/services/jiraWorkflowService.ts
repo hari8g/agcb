@@ -16,22 +16,29 @@ import { JIRA_WORKFLOW_STAGES, narrateWorkflowStage } from '../../common/mcp/jir
 import {
 	createEmptyInteractiveState,
 	type InteractiveJiraWorkflowState,
+	type JiraExecutionFileStatus,
 	type JiraTicket,
 	type JiraWorkflowCheckpoint,
 	type JiraWorkflowCheckpointStage,
 	type JiraWorkflowEvent,
 	type JiraWorkflowEventLevel,
 	type JiraWorkflowPlan,
+	type JiraWorkflowSyncResult,
 } from '../../common/mcp/jiraWorkflowTypes.js';
+import { annotateTicketOpenState } from '../../common/mcp/jiraTicketStatus.js';
+import { IAgenticEditorBridgeService } from './agenticEditorBridgeService.js';
 import {
 	buildExecutionUserPrompt,
 	generateWorkflowPlan,
 	type WorkspaceScanHint,
 } from '../../common/mcp/jiraPlanGenerator.js';
+import { isSourceOrConfigPath } from '../../common/mcp/jiraWorkspaceDiscovery.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IAgenticMcpService } from './agenticMcpService.js';
 import { IAgenticChatThreadService } from './chatThreadService.js';
 import { JiraWorkflowCheckpointStore } from './jiraWorkflowCheckpointStore.js';
+import { formatWorkflowSummaryMarkdown } from '../../common/workflowSummary.js';
+import type { WorkflowCompletionSummary } from '../../common/workflowSummary.js';
 
 export { IJiraWorkflowService, detectIssueKeyFromText } from './jiraWorkflowServiceInterface.js';
 
@@ -52,6 +59,7 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 	constructor(
 		@IAgenticMcpService private readonly agenticMcp: IAgenticMcpService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IAgenticEditorBridgeService private readonly editorBridge: IAgenticEditorBridgeService,
 		@IFileService private readonly fileService: IFileService,
 		@IWorkspaceContextService private readonly workspaceContext: IWorkspaceContextService,
 		@IStorageService storageService: IStorageService,
@@ -188,12 +196,40 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 		this._notify();
 	}
 
+	resetChatWorkspace(): void {
+		this.interactive = createEmptyInteractiveState();
+		this.state = null;
+		this._notify();
+	}
+
+	async openExecutionFileInEditor(filePath: string): Promise<void> {
+		await this.editorBridge.openFileInEditor(filePath);
+	}
+
+	recordExecutionFileChange(filePath: string, status: JiraExecutionFileStatus): void {
+		const path = filePath.trim();
+		if (!path || !this.interactive.executing) {
+			return;
+		}
+		const existing = this.interactive.executionChangedFiles.find(f => f.path === path);
+		if (existing) {
+			existing.status = status;
+			existing.updatedAt = Date.now();
+		} else {
+			this.interactive.executionChangedFiles = [
+				...this.interactive.executionChangedFiles,
+				{ path, status, updatedAt: Date.now() },
+			];
+		}
+		this._notify();
+	}
+
 	applyOpenTicketsFromChat(tickets: JiraTicket[]): void {
 		this.interactive.openTickets = tickets;
 		this.interactive.error = null;
 		this.interactive.phase = tickets.length ? 'tickets_ready' : 'idle';
 		this.interactive.ticketsLoading = false;
-		this._emit(`Fetched ${tickets.length} open ticket(s).`, {
+		this._emit(`Fetched ${tickets.length} ticket(s).`, {
 			stage: 'open-tickets-fetched',
 			level: tickets.length ? 'success' : 'warning',
 		});
@@ -308,7 +344,7 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 			const plan = generateWorkflowPlan(ticket, workspace);
 			this.interactive.plan = plan;
 			this.interactive.phase = 'awaiting_decision';
-			this._emit('Workflow plan generated. Review and accept or decline.', {
+			this._emit('Workflow plan ready — use Proceed or Decline in chat.', {
 				stage: 'workflow-plan-generated',
 				ticketKey: ticket.key,
 				level: 'success',
@@ -346,69 +382,140 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 	async executeWorkflow(): Promise<void> {
 		const plan = this.interactive.plan;
 		const ticket = this.interactive.selectedTicket;
-		if (!plan || !ticket) return;
+		if (!plan || !ticket) {
+			return;
+		}
 
 		this.interactive.executing = true;
 		this.interactive.phase = 'executing';
 		this.interactive.error = null;
+		this.interactive.executionChangedFiles = [];
+		this.interactive.jiraSyncResult = null;
+		this.interactive.agentExecutionSummary = null;
+		this.interactive.agentRunStalled = false;
 		this._notify();
 
 		const executionLog: string[] = [];
 
 		try {
 			this.startWorkflow(ticket.key);
-			this._createCheckpoint('before-code-edit', 'Before code changes', { plan });
+			const fileSnapshots = await this._snapshotWorkspaceFiles([
+				...plan.likelyFiles.filter(p => p && !p.endsWith('/')),
+				...this.interactive.executionChangedFiles.map(f => f.path),
+			]);
+			this._createCheckpoint('before-code-edit', 'Before code changes', { plan, fileSnapshots });
+
+			this._emit('Execution mode — opening planned files in the main editor.', {
+				stage: 'code-edit',
+				ticketKey: ticket.key,
+				level: 'info',
+			});
+			await this._openPlanFilesInEditor(plan);
 
 			for (const cmd of plan.commandsToRun.slice(0, 4)) {
-				this._emit(`Validation step: ${cmd}`, { stage: 'validation', ticketKey: ticket.key });
+				this._emit(`Planned validation: ${cmd}`, { stage: 'validation', ticketKey: ticket.key });
 				executionLog.push(cmd);
 			}
 
-			this._emit('Starting agent run with approved implementation plan.', {
+			const prompt = buildExecutionUserPrompt(plan, ticket);
+			this._emit('Running agent with approved plan — watch the editor for live diffs.', {
 				stage: 'code-edit',
 				ticketKey: ticket.key,
 			});
-			const prompt = buildExecutionUserPrompt(plan, ticket);
-			await this.instantiationService.invokeFunction(accessor =>
-				accessor.get(IAgenticChatThreadService).sendUserMessage(prompt),
+
+			const runResult = await this.instantiationService.invokeFunction(accessor =>
+				accessor.get(IAgenticChatThreadService).sendWorkflowExecutionPrompt(prompt, {
+					jiraWorkflowIssueKey: ticket.key,
+					jiraExecutionRun: true,
+				}),
 			);
 
-			this._createCheckpoint('after-code-edit', 'Agent run started for code changes', {
-				note: 'Automatic edits run via Agentic chat; monitor the message stream for tool activity.',
+			if (runResult.workflowSummary) {
+				this.interactive.agentExecutionSummary = runResult.workflowSummary;
+			}
+			this.interactive.agentRunStalled =
+				runResult.planStall === true
+				|| runResult.completionKind === 'stalled';
+
+			if (runResult.status === 'failed') {
+				throw new Error(runResult.error ?? 'Agent run failed');
+			}
+			if (runResult.status === 'stopped') {
+				throw new Error('Agent run was stopped');
+			}
+
+			this._createCheckpoint('after-code-edit', 'Agent run finished', {
+				changedFiles: this.interactive.executionChangedFiles.map(f => f.path),
+				completionKind: runResult.completionKind,
+				planStall: runResult.planStall,
 			});
 
-			this._emit('Agent execution started — follow the chat stream for tool and edit progress.', {
+			if (this.interactive.agentRunStalled) {
+				this.interactive.phase = 'failed';
+				this.interactive.error =
+					'Agent finished without running workspace tools. Use Continue with tools below, then Run again.';
+				this._emit('Agent stalled (no tools run) — JIRA was not updated.', {
+					stage: 'after-code-edit',
+					level: 'warning',
+					ticketKey: ticket.key,
+				});
+				return;
+			}
+
+			const toolsRan = runResult.toolsRan === true;
+			const filesFromAgent = runResult.workflowSummary?.filesTouched?.length ?? 0;
+			const filesFromBridge = this.interactive.executionChangedFiles.length;
+			const hasDeliverableWork = toolsRan && (filesFromAgent > 0 || filesFromBridge > 0);
+
+			if (!hasDeliverableWork && runResult.completionKind === 'partial') {
+				this.interactive.phase = 'failed';
+				this.interactive.error =
+					'Agent hit turn limit before completing file changes. Continue with tools or re-run the workflow.';
+				this._emit('Agent run partial — no file changes recorded; JIRA not updated.', {
+					stage: 'after-code-edit',
+					level: 'warning',
+					ticketKey: ticket.key,
+				});
+				return;
+			}
+
+			this._emit('Agent finished — syncing JIRA ticket.', {
 				stage: 'after-code-edit',
 				level: 'success',
 				ticketKey: ticket.key,
 			});
 
-			this._createCheckpoint('validation-completed', 'Validation orchestration recorded', {
-				commands: plan.commandsToRun,
-				note: 'Re-run build/test in chat if the agent has not completed validation.',
-			});
-			this._emit('Validation steps recorded. Update JIRA after you confirm build/test pass.', {
-				stage: 'validation-completed',
-				level: 'info',
-			});
+			const sync: JiraWorkflowSyncResult = {
+				commentAdded: false,
+				transitionAttempted: false,
+				transitionOk: false,
+				errors: [],
+			};
 
-			const comment = this._buildJiraComment(plan, ticket, executionLog);
-			this._emit('Adding workflow summary comment to JIRA ticket.', { stage: 'jira-status-updated', ticketKey: ticket.key });
+			const comment = this._buildJiraComment(
+				plan,
+				ticket,
+				executionLog,
+				this.interactive.executionChangedFiles,
+				this.interactive.agentExecutionSummary ?? undefined,
+			);
+			this._emit('Posting workflow summary comment to JIRA…', { stage: 'jira-status-updated', ticketKey: ticket.key });
 			try {
 				await this.agenticMcp.addTicketComment(ticket.key, comment);
+				sync.commentAdded = true;
 				this._emit('JIRA comment added.', { level: 'success', ticketKey: ticket.key });
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
+				sync.errors.push(`Comment: ${msg}`);
 				this._emit(`JIRA comment failed: ${msg}`, { level: 'warning', ticketKey: ticket.key });
 			}
 
-			this._emit(
-				'Confirm build/test results in the chat stream before treating the ticket as Done.',
-				{ stage: 'jira-status-updated', level: 'info', ticketKey: ticket.key },
-			);
+			sync.transitionTarget = plan.recommendedTransitionStatus;
+			sync.transitionAttempted = true;
 			try {
 				await this.agenticMcp.transitionTicketToStatus(ticket.key, plan.recommendedTransitionStatus);
-				this._emit(`JIRA status updated toward "${plan.recommendedTransitionStatus}".`, {
+				sync.transitionOk = true;
+				this._emit(`JIRA status set to "${plan.recommendedTransitionStatus}".`, {
 					stage: 'jira-status-updated',
 					level: 'success',
 					ticketKey: ticket.key,
@@ -418,11 +525,20 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 				});
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
-				this._emit(`JIRA transition skipped or failed: ${msg}`, { level: 'warning', ticketKey: ticket.key });
+				sync.errors.push(`Transition: ${msg}`);
+				this._emit(`JIRA transition failed: ${msg}`, { level: 'warning', ticketKey: ticket.key });
 			}
 
+			await this._refreshTicketFromJira(ticket.key);
+			sync.refreshedStatus = this.interactive.selectedTicket?.status;
+			this.interactive.jiraSyncResult = sync;
+
 			this.interactive.phase = 'completed';
-			this._emit('Workflow completed.', { stage: 'complete', level: 'success', ticketKey: ticket.key });
+			this._emit('Workflow complete — ticket refreshed from JIRA.', {
+				stage: 'complete',
+				level: 'success',
+				ticketKey: ticket.key,
+			});
 			this.markStageComplete('complete');
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
@@ -435,29 +551,141 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 		}
 	}
 
+	private async _openPlanFilesInEditor(plan: JiraWorkflowPlan): Promise<void> {
+		const sourceFirst = [
+			...plan.likelyFiles.filter(p => p && !/package\.json$/i.test(p)),
+			...plan.likelyFiles.filter(p => /package\.json$/i.test(p)),
+		];
+		const paths = [...new Set(sourceFirst.filter(p => p && !p.endsWith('/')))].slice(0, 8);
+		for (const filePath of paths) {
+			try {
+				await this.editorBridge.openFileInEditor(filePath);
+				this.recordExecutionFileChange(filePath, 'opened');
+				this._emit(`Opened ${filePath} in editor`, { stage: 'code-edit', level: 'info' });
+			} catch {
+				// file may not exist until the agent creates it
+			}
+		}
+	}
+
+	private async _refreshTicketFromJira(ticketKey: string): Promise<void> {
+		const detailed = await this.agenticMcp.fetchTicketDetails(ticketKey);
+		const merged = { ...(this.interactive.selectedTicket ?? { key: ticketKey, summary: ticketKey }), ...detailed };
+		this.interactive.selectedTicket = merged;
+		const idx = this.interactive.openTickets.findIndex(t => t.key === ticketKey);
+		if (idx >= 0) {
+			const next = [...this.interactive.openTickets];
+			next[idx] = annotateTicketOpenState([merged])[0]!;
+			this.interactive.openTickets = next;
+		}
+		this._emit(`JIRA refreshed: status is now "${detailed.status ?? 'unknown'}".`, {
+			stage: 'jira-status-updated',
+			level: 'success',
+			ticketKey,
+		});
+	}
+
 	async restoreCheckpoint(checkpointId: string): Promise<void> {
 		const cp = this.interactive.checkpoints.find(c => c.id === checkpointId);
 		if (!cp) {
 			this._emit(`Checkpoint not found: ${checkpointId}`, { level: 'error' });
 			return;
 		}
-		this._emit(`Inspecting checkpoint "${cp.summary}" (${cp.stage}).`, { stage: 'restore', ticketKey: cp.ticketKey });
-		this._emit(
-			'Restore not fully supported yet for file changes, but this checkpoint can be inspected in the Checkpoints panel.',
-			{ level: 'warning', payload: cp.payload },
-		);
-		if (cp.stage === 'workflow-plan-generated' && cp.payload) {
+		this._emit(`Restoring checkpoint "${cp.summary}" (${cp.stage}).`, { stage: 'restore', ticketKey: cp.ticketKey });
+
+		const payload = cp.payload as {
+			plan?: JiraWorkflowPlan;
+			fileSnapshots?: { path: string; content: string }[];
+		} | undefined;
+
+		if (payload?.fileSnapshots?.length) {
+			let restored = 0;
+			for (const file of payload.fileSnapshots) {
+				try {
+					await this.editorBridge.writeFile(file.path, file.content);
+					restored++;
+				} catch {
+					// continue
+				}
+			}
+			if (restored > 0) {
+				this._emit(`Restored ${restored} file${restored === 1 ? '' : 's'} from checkpoint.`, {
+					stage: 'restore',
+					level: 'success',
+					ticketKey: cp.ticketKey,
+				});
+			}
+		}
+
+		if (payload?.plan) {
+			this.interactive.plan = payload.plan;
+			if (cp.stage === 'before-code-edit' || cp.stage === 'workflow-plan-generated') {
+				this.interactive.phase = cp.stage === 'before-code-edit' ? 'executing' : 'awaiting_decision';
+			}
+		} else if (cp.stage === 'workflow-plan-generated' && cp.payload) {
 			this.interactive.plan = cp.payload as JiraWorkflowPlan;
 			this.interactive.phase = 'awaiting_decision';
-			this._notify();
 		}
+		this._notify();
 	}
 
-	private _buildJiraComment(plan: JiraWorkflowPlan, ticket: JiraTicket, executionLog: string[]): string {
+	private async _snapshotWorkspaceFiles(paths: string[]): Promise<{ path: string; content: string }[]> {
+		const folder = this.workspaceContext.getWorkspace().folders[0]?.uri.fsPath;
+		const unique = [...new Set(paths.map(p => p.trim()).filter(Boolean))].slice(0, 24);
+		const snapshots: { path: string; content: string }[] = [];
+		for (const filePath of unique) {
+			const candidates = folder && !filePath.startsWith(folder)
+				? [`${folder}/${filePath.replace(/^[/\\]/, '')}`, filePath]
+				: [filePath];
+			for (const full of candidates) {
+				try {
+					const content = (await this.fileService.readFile(URI.file(full))).value.toString();
+					snapshots.push({ path: filePath, content });
+					break;
+				} catch { /* try next */ }
+			}
+		}
+		return snapshots;
+	}
+
+	private _buildJiraComment(
+		plan: JiraWorkflowPlan,
+		ticket: JiraTicket,
+		executionLog: string[],
+		changedFiles: { path: string }[],
+		agentSummary?: WorkflowCompletionSummary,
+	): string {
+		if (agentSummary) {
+			const agentBlock = formatWorkflowSummaryMarkdown(agentSummary)
+				.replace(/^## /gm, 'h3. ')
+				.replace(/^### /gm, 'h4. ')
+				.replace(/\*\*([^*]+)\*\*/g, '*$1*');
+			return [
+				'*Agentic_MPS JIRA workflow*',
+				'',
+				`*Ticket:* ${ticket.key} — ${ticket.summary}`,
+				'',
+				agentBlock,
+				'',
+				'*Planned validation*',
+				...(executionLog.length ? executionLog.map(c => `- ${c}`) : plan.commandsToRun.map(c => `- ${c}`)),
+				'',
+				`*Recommended JIRA status:* ${plan.recommendedTransitionStatus}`,
+				'',
+				'_Generated by MPS_AC Agentic JIRA workflow._',
+			].join('\n');
+		}
+
+		const fileLines = changedFiles.length
+			? changedFiles.map(f => `- \`${f.path}\``)
+			: ['- _(no file paths recorded — check repo diff)_'];
 		return [
 			'*Agentic_MPS workflow summary*',
 			'',
 			`*Ticket:* ${ticket.key} — ${ticket.summary}`,
+			'',
+			'*Files changed*',
+			...fileLines,
 			'',
 			'*What was done*',
 			...plan.implementationSteps.slice(0, 6).map(s => `- ${s}`),
@@ -465,7 +693,7 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 			'*Validation / commands*',
 			...(executionLog.length ? executionLog.map(c => `- ${c}`) : plan.commandsToRun.map(c => `- ${c}`)),
 			'',
-			`*Recommended status:* ${plan.recommendedTransitionStatus}`,
+			`*Status:* ${plan.recommendedTransitionStatus}`,
 			'',
 			'_Generated by MPS_AC Agentic JIRA workflow._',
 		].join('\n');
@@ -525,8 +753,8 @@ class JiraWorkflowService extends Disposable implements IJiraWorkflowService {
 			for (const child of stat.children) {
 				if (!child.isDirectory) {
 					const name = child.name;
-					if (/package\.json$/i.test(name) || /tsconfig.*\.json$/i.test(name)) {
-						const path = rel ? `${rel}/${name}` : name;
+					const path = rel ? `${rel}/${name}` : name;
+					if (isSourceOrConfigPath(path) && out.length < 1500) {
 						out.push(path);
 					}
 					continue;

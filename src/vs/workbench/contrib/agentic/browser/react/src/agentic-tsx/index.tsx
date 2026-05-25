@@ -4,7 +4,14 @@
 
 import { mountFnGenerator } from '../util/mountFnGenerator.js';
 import { AgenticChat } from '../components/AgenticChat.js';
+import { JiraPanel } from '../components/JiraPanel.js';
+import { CodebaseGraphPanel } from '../components/CodebaseGraphPanel.js';
 
-// Pass the component directly (same as Void sidebar). Avoid JSX here — the bundle
-// would emit React.createElement without a React import and the view stays blank.
+export {
+	_registerAgenticServices,
+	useHasWorkspace,
+	useKnowledgeGraph,
+} from '../util/agenticServices.js';
 export const mountAgenticView = mountFnGenerator(AgenticChat);
+export const mountJiraView = mountFnGenerator(JiraPanel);
+export const mountCodebaseGraphView = mountFnGenerator(CodebaseGraphPanel);

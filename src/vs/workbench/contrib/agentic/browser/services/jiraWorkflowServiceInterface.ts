@@ -6,6 +6,7 @@ import { createDecorator } from '../../../../../platform/instantiation/common/in
 import type { JiraWorkflowStage, JiraWorkflowState } from '../../common/mcp/jiraTypes.js';
 import type {
 	InteractiveJiraWorkflowState,
+	JiraExecutionFileStatus,
 	JiraTicket,
 	JiraWorkflowEvent,
 } from '../../common/mcp/jiraWorkflowTypes.js';
@@ -41,6 +42,12 @@ export interface IJiraWorkflowService {
 	backToTicketList(): void;
 	applyOpenTicketsFromChat(tickets: JiraTicket[]): void;
 	setChatError(message: string): void;
+	/** Clear in-chat workflow state (events, plan, selection) for a fresh workspace. */
+	resetChatWorkspace(): void;
+	/** Track a file touched during Run (opens in main editor). */
+	recordExecutionFileChange(filePath: string, status: JiraExecutionFileStatus): void;
+	/** Open a workflow file in the main editor (from JIRA panel file list). */
+	openExecutionFileInEditor(filePath: string): Promise<void>;
 }
 
 export function detectIssueKeyFromText(text: string): string | undefined {

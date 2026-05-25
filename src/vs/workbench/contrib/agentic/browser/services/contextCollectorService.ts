@@ -22,7 +22,20 @@ export const IContextCollectorService = createDecorator<IContextCollectorService
 
 export interface IContextCollectorService {
 	readonly _serviceBrand: undefined;
-	collect(userMessage: string, opts: { includeActiveFile: boolean; includeSelection: boolean }): Promise<CodebaseContext>;
+	collect(userMessage: string, opts: {
+		includeActiveFile: boolean;
+		includeSelection: boolean;
+		enableSemanticSearch?: boolean;
+		semanticSearchLimit?: number;
+		/** Skip full active file body; rely on index + tools (Cursor dynamic context) */
+		dynamicContextDiscovery?: boolean;
+		extraContextBlocks?: string[];
+		/** Orchestration context tier */
+		includeOpenTabs?: boolean;
+		includeRecentFiles?: boolean;
+		includeRelatedTests?: boolean;
+		relatedTestPaths?: string[];
+	}): Promise<CodebaseContext>;
 }
 
 class ContextCollectorService extends Disposable implements IContextCollectorService {
@@ -39,7 +52,18 @@ class ContextCollectorService extends Disposable implements IContextCollectorSer
 		super();
 	}
 
-	async collect(userMessage: string, opts: { includeActiveFile: boolean; includeSelection: boolean }): Promise<CodebaseContext> {
+	async collect(userMessage: string, opts: {
+		includeActiveFile: boolean;
+		includeSelection: boolean;
+		enableSemanticSearch?: boolean;
+		semanticSearchLimit?: number;
+		dynamicContextDiscovery?: boolean;
+		extraContextBlocks?: string[];
+		includeOpenTabs?: boolean;
+		includeRecentFiles?: boolean;
+		includeRelatedTests?: boolean;
+		relatedTestPaths?: string[];
+	}): Promise<CodebaseContext> {
 		const folders = this.workspaceContextService.getWorkspace().folders.map(f => f.uri.fsPath);
 		const control = this.editorService.activeTextEditorControl;
 		const codeEditor = control && isCodeEditor(control) ? control : undefined;
@@ -50,9 +74,11 @@ class ContextCollectorService extends Disposable implements IContextCollectorSer
 		let selectedCode: string | null = null;
 		let selectionRange: { startLine: number; endLine: number } | null = null;
 
-		if (opts.includeActiveFile && model && activeUri) {
+		if (opts.includeActiveFile && model && activeUri && !opts.dynamicContextDiscovery) {
 			const full = model.getValue(EndOfLinePreference.LF);
 			activeFileContent = full.slice(0, CONTEXT_LIMITS.maxActiveFileChars);
+		} else if (opts.includeActiveFile && activeUri && opts.dynamicContextDiscovery) {
+			activeFileContent = `[Dynamic context] Active file: ${activeUri.fsPath} — use read_file when you need contents.`;
 		}
 
 		if (opts.includeSelection && codeEditor && model) {
@@ -64,16 +90,18 @@ class ContextCollectorService extends Disposable implements IContextCollectorSer
 		}
 
 		const openTabs: CodebaseContext['openTabs'] = [];
-		for (const group of this.editorGroupsService.groups) {
-			for (const editor of group.editors) {
-				if (openTabs.length >= CONTEXT_LIMITS.maxOpenTabs) break;
-				const res = editor.resource;
-				if (!res) continue;
-				openTabs.push({
-					path: res.fsPath,
-					languageId: this.modelService.getModel(res)?.getLanguageId() ?? 'plaintext',
-					isActive: activeUri?.fsPath === res.fsPath,
-				});
+		if (opts.includeOpenTabs !== false) {
+			for (const group of this.editorGroupsService.groups) {
+				for (const editor of group.editors) {
+					if (openTabs.length >= CONTEXT_LIMITS.maxOpenTabs) break;
+					const res = editor.resource;
+					if (!res) continue;
+					openTabs.push({
+						path: res.fsPath,
+						languageId: this.modelService.getModel(res)?.getLanguageId() ?? 'plaintext',
+						isActive: activeUri?.fsPath === res.fsPath,
+					});
+				}
 			}
 		}
 
@@ -81,10 +109,17 @@ class ContextCollectorService extends Disposable implements IContextCollectorSer
 			this._trackRecentFile(activeUri.fsPath);
 		}
 
-		const recentFiles = this._loadRecentFiles().slice(0, CONTEXT_LIMITS.maxRecentFiles);
+		const recentFiles = opts.includeRecentFiles !== false
+			? this._loadRecentFiles().slice(0, CONTEXT_LIMITS.maxRecentFiles)
+			: [];
 		const gitBranch: string | null = null; // SCM/git integration can be wired via ISCMService
 
-		const relevant = await this.codeIntelligence.getRelevantContext(userMessage, 10);
+		const semanticLimit = opts.dynamicContextDiscovery
+			? Math.min(opts.semanticSearchLimit ?? 10, 5)
+			: (opts.semanticSearchLimit ?? 10);
+		const relevant = opts.enableSemanticSearch !== false
+			? await this.codeIntelligence.getRelevantContext(userMessage, semanticLimit)
+			: [];
 		const codeGraph = emptyCodeGraphContext();
 		codeGraph.semanticMatches = relevant.map(r => ({
 			path: r.path,
@@ -96,6 +131,20 @@ class ContextCollectorService extends Disposable implements IContextCollectorSer
 			const lang = model?.getLanguageId() ?? 'plaintext';
 			const syms = extractSymbolsLexical(activeFileContent, lang);
 			codeGraph.symbols = syms.map(s => `${s.name} (${s.kind}, L${s.line})`);
+		}
+
+		if (opts.extraContextBlocks?.length) {
+			codeGraph.knowledgeGraphDigest = [
+				codeGraph.knowledgeGraphDigest ?? '',
+				...opts.extraContextBlocks,
+			].filter(Boolean).join('\n\n');
+		}
+
+		if (opts.includeRelatedTests && opts.relatedTestPaths?.length) {
+			codeGraph.knowledgeGraphDigest = [
+				codeGraph.knowledgeGraphDigest ?? '',
+				`<related_tests>\n${opts.relatedTestPaths.join('\n')}\n</related_tests>`,
+			].filter(Boolean).join('\n\n');
 		}
 
 		return {

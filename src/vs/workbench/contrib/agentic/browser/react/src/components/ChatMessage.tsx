@@ -1,56 +1,42 @@
 import React from 'react';
 import type { ChatMessage as ChatMessageType } from '../../../../common/agenticTypes.js';
-import { ActivityFeed } from './ActivityFeed.js';
-import { ToolCallCard } from './ToolCallCard.js';
 import { JiraChatBlock } from './jira/JiraChatBlock.js';
+import { AgentTurnView } from './AgentTurnView.js';
 
 export function ChatMessage({
 	message,
 	isLive,
+	voidLike,
 }: {
 	message: ChatMessageType;
 	isLive?: boolean;
+	voidLike?: boolean;
 }) {
 	const isUser = message.role === 'user';
+	const hasJira = !!message.jiraChat;
 
 	if (isUser) {
+		const trimmed = message.content.trim();
+		if (/^(tickets|show open jira|jira)$/i.test(trimmed)) {
+			return null;
+		}
+		if (/^\[Orchestrator\]/i.test(trimmed) || /^\[Execute approved plan\]/i.test(trimmed)) {
+			return null;
+		}
 		return (
-			<div className="agentic-turn">
-				<div className="agentic-card agentic-card-user">
-					<div className="agentic-role">You</div>
-					<div className="agentic-message-body">{message.content}</div>
-				</div>
-			</div>
+			<article className="agentic-chat-turn agentic-chat-turn--user">
+				<div className="agentic-chat-bubble agentic-chat-bubble--user">{message.content}</div>
+			</article>
 		);
 	}
 
-	const hasJira = !!message.jiraChat;
-	const showAnswer = message.content.length > 0 || message.state === 'complete' || hasJira;
-	const isStreamingAnswer = isLive && message.state === 'streaming';
+	if (hasJira) {
+		return (
+			<article className="agentic-chat-turn agentic-chat-turn--assistant">
+				<JiraChatBlock ui={message.jiraChat!} />
+			</article>
+		);
+	}
 
-	return (
-		<div className="agentic-turn">
-			<ActivityFeed message={message} />
-			{(showAnswer || (isLive && message.state !== 'error' && message.state !== 'streaming')) && (
-				<div className="agentic-card agentic-card-assistant">
-					<div className="agentic-role">Assistant</div>
-					{(message.content || isLive) && message.state !== 'error' && (
-						<div className="agentic-message-body">
-							{message.content || (isLive ? (
-								<span className="agentic-answer-placeholder">Formulating response…</span>
-							) : null)}
-							{isStreamingAnswer && <span className="agentic-answer-cursor" aria-hidden />}
-						</div>
-					)}
-					{hasJira && <JiraChatBlock ui={message.jiraChat!} />}
-				</div>
-			)}
-			{message.toolCalls?.map(tc => (
-				<ToolCallCard key={tc.id} toolCall={tc} />
-			))}
-			{message.state === 'error' && (
-				<div className="agentic-error-banner">{message.content || 'Something went wrong.'}</div>
-			)}
-		</div>
-	);
+	return <AgentTurnView message={message} isLive={isLive} voidLike={voidLike} />;
 }

@@ -44,6 +44,7 @@ import { ServicesAccessor } from '../../../../editor/browser/editorExtensions.js
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { VOID_COMPOSER_VIEW_CONTAINER_ID } from './composerPane.js';
 
 // compare against search.contribution.ts and debug.contribution.ts, scm.contribution.ts (source control)
 
@@ -106,12 +107,12 @@ export const VOID_VIEW_ID = VOID_VIEW_CONTAINER_ID
 
 // Register view container
 const viewContainerRegistry = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry);
-const container = viewContainerRegistry.registerViewContainer({
+export const voidChatViewContainer = viewContainerRegistry.registerViewContainer({
 	id: VOID_VIEW_CONTAINER_ID,
-	title: nls.localize2('voidContainer', 'Chat'), // this is used to say "Void" (Ctrl + L)
+	title: nls.localize2('voidContainer', 'Agentic AI'),
 	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [VOID_VIEW_CONTAINER_ID, {
 		mergeViewWithContainerWhenSingleView: true,
-		orientation: Orientation.HORIZONTAL,
+		orientation: Orientation.VERTICAL,
 	}]),
 	hideIfEmpty: false,
 	order: 1,
@@ -134,7 +135,7 @@ viewsRegistry.registerViews([{
 	ctorDescriptor: new SyncDescriptor(SidebarViewPane),
 	canToggleVisibility: false,
 	canMoveView: false, // can't move this out of its container
-	weight: 80,
+	weight: 140,
 	order: 1,
 	// singleViewPaneContainerTitle: 'hi',
 
@@ -145,7 +146,7 @@ viewsRegistry.registerViews([{
 	// 	},
 	// 	order: 1
 	// },
-}], container);
+}], voidChatViewContainer);
 
 
 // open sidebar
@@ -158,8 +159,7 @@ registerAction2(class extends Action2 {
 		})
 	}
 	run(accessor: ServicesAccessor): void {
-		const viewsService = accessor.get(IViewsService)
-		viewsService.openViewContainer(VOID_VIEW_CONTAINER_ID);
+		accessor.get(IViewsService).openViewContainer(VOID_VIEW_CONTAINER_ID);
 	}
 });
 
@@ -167,8 +167,10 @@ export class SidebarStartContribution implements IWorkbenchContribution {
 	static readonly ID = 'workbench.contrib.startupVoidSidebar';
 	constructor(
 		@ICommandService private readonly commandService: ICommandService,
+		@IViewsService private readonly viewsService: IViewsService,
 	) {
-		this.commandService.executeCommand(VOID_OPEN_SIDEBAR_ACTION_ID)
+		this.commandService.executeCommand(VOID_OPEN_SIDEBAR_ACTION_ID);
+		void this.viewsService.openViewContainer(VOID_COMPOSER_VIEW_CONTAINER_ID);
 	}
 }
 registerWorkbenchContribution2(SidebarStartContribution.ID, SidebarStartContribution, WorkbenchPhase.AfterRestored);

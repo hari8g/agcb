@@ -6,9 +6,12 @@ import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
 	buildJiraIssueToolParams,
+	buildAllTicketsJql,
+	buildOpenTicketsJql,
 	extractJiraIssueKeys,
 	buildJiraContextBlock,
 	findJiraGetIssueTool,
+	inferJiraProjectKeyFromEnv,
 	mcpToolBaseName,
 	parseIssueFromMcpText,
 	resolveAtlassianCloudId,
@@ -107,5 +110,27 @@ suite('Agentic jiraContextExtractor', () => {
 		const ctx = parseIssueFromMcpText(JSON.stringify({ summary: 'Hello', status: 'Open' }), 'X-1');
 		assert.strictEqual(ctx.issueKey, 'X-1');
 		assert.strictEqual(ctx.summary, 'Hello');
+	});
+
+	test('buildAllTicketsJql is bounded without project', () => {
+		const jql = buildAllTicketsJql();
+		assert.ok(jql.includes('updated >='));
+		assert.ok(!/^ORDER BY/i.test(jql.trim()));
+	});
+
+	test('buildAllTicketsJql scopes project when provided', () => {
+		assert.strictEqual(buildAllTicketsJql('kan'), 'project = KAN AND updated >= -90d ORDER BY updated DESC');
+	});
+
+	test('buildOpenTicketsJql is bounded without project', () => {
+		const jql = buildOpenTicketsJql();
+		assert.ok(jql.includes('statusCategory != Done'));
+		assert.ok(jql.includes('updated >='));
+	});
+
+	test('inferJiraProjectKeyFromEnv', () => {
+		assert.strictEqual(inferJiraProjectKeyFromEnv({ ATLASSIAN_PROJECT: 'kan' }), 'KAN');
+		assert.strictEqual(inferJiraProjectKeyFromEnv({ JIRA_PROJECT_KEY: 'MPS' }), 'MPS');
+		assert.strictEqual(inferJiraProjectKeyFromEnv({ ATLASSIAN_PROJECT: 'bad key' }), undefined);
 	});
 });

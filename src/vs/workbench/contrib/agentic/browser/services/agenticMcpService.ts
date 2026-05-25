@@ -22,7 +22,8 @@ import {
 	buildJiraIssueToolParams,
 	buildJiraSearchParams,
 	buildJiraTransitionParams,
-	buildOpenTicketsJql,
+	buildAllTicketsJql,
+	inferJiraProjectKeyFromEnv,
 	describeJiraMcpUnavailableMessage,
 	extractJiraIssueKeys,
 	findJiraCommentTool,
@@ -39,6 +40,7 @@ import {
 	pickTransitionForStatus,
 } from '../../common/mcp/jiraIssueParser.js';
 import type { JiraTicket } from '../../common/mcp/jiraWorkflowTypes.js';
+import { annotateTicketOpenState } from '../../common/mcp/jiraTicketStatus.js';
 import type { JiraIssueContext } from '../../common/mcp/jiraTypes.js';
 import {
 	buildAtlassianEnvDiagnostics,
@@ -71,6 +73,8 @@ export interface IAgenticMcpService {
 	ensureAtlassianMcpReady(maxWaitMs?: number): Promise<void>;
 	getJiraMcpStatusSummary(): Promise<string>;
 	listOpenTickets(projectKey?: string, maxResults?: number): Promise<JiraTicket[]>;
+	/** Open + closed tickets for in-chat list (closed shown greyed out). */
+	listAllTickets(projectKey?: string, maxResults?: number): Promise<JiraTicket[]>;
 	fetchTicketDetails(ticketKey: string): Promise<JiraTicket>;
 	getAvailableTransitions(ticketKey: string): Promise<{ id: string; name: string }[]>;
 	transitionTicket(ticketKey: string, transitionId: string): Promise<string>;
@@ -353,6 +357,11 @@ class AgenticMcpService extends Disposable implements IAgenticMcpService {
 	}
 
 	async listOpenTickets(projectKey?: string, maxResults = 25): Promise<JiraTicket[]> {
+		const all = await this.listAllTickets(projectKey, maxResults);
+		return all.filter(t => t.isOpen !== false);
+	}
+
+	async listAllTickets(projectKey?: string, maxResults = 40): Promise<JiraTicket[]> {
 		await this.ensureAtlassianMcpReady();
 		const { env } = await this._probeAtlassianEnv();
 		const tools = this.getSerializableTools();
@@ -360,10 +369,10 @@ class AgenticMcpService extends Disposable implements IAgenticMcpService {
 		if (!searchTool) {
 			throw new Error('searchJiraIssuesUsingJql is not available on the Atlassian MCP server.');
 		}
-		const jql = buildOpenTicketsJql(projectKey);
+		const jql = buildAllTicketsJql(projectKey ?? inferJiraProjectKeyFromEnv(env));
 		const params = buildJiraSearchParams(searchTool, jql, env, maxResults);
 		const text = await this.callTool(searchTool.serverName, searchTool.name, params);
-		const tickets = parseJiraSearchResults(text);
+		const tickets = annotateTicketOpenState(parseJiraSearchResults(text));
 		if (!tickets.length && /error|failed/i.test(text)) {
 			throw new Error(this._userSafeMcpError(text));
 		}

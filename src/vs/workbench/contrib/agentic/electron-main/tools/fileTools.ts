@@ -2,8 +2,15 @@
  *  Agentic AI — file tools (electron-main)
  *--------------------------------------------------------------------------------------*/
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { join, resolve } from 'path';
+import { readFileSync, existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'fs';
+import { dirname, join, resolve } from 'path';
+
+export function writeFileTool(workspaceRoot: string, filePath: string, content: string): string {
+	const full = resolve(workspaceRoot, filePath);
+	mkdirSync(dirname(full), { recursive: true });
+	writeFileSync(full, content, 'utf8');
+	return `Wrote ${filePath} (${content.length} bytes)`;
+}
 
 export function readFileTool(workspaceRoot: string, path: string, maxChars = 100_000): string {
 	const full = resolve(workspaceRoot, path);

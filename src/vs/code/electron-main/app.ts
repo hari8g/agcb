@@ -131,6 +131,7 @@ import { MetricsMainService } from '../../workbench/contrib/void/electron-main/m
 import { VoidMainUpdateService } from '../../workbench/contrib/void/electron-main/voidUpdateMainService.js';
 import { LLMMessageChannel } from '../../workbench/contrib/void/electron-main/sendLLMMessageChannel.js';
 import { AgenticRuntimeChannel } from '../../workbench/contrib/agentic/electron-main/llmMessageChannel.js';
+import { initAgenticRendererToolsAccess } from '../../workbench/contrib/agentic/electron-main/rendererToolsAccess.js';
 import { VoidSCMService } from '../../workbench/contrib/void/electron-main/voidSCMMainService.js';
 import { IVoidSCMService } from '../../workbench/contrib/void/common/voidSCMTypes.js';
 import { MCPChannel } from '../../workbench/contrib/void/electron-main/mcpChannel.js';
@@ -654,6 +655,7 @@ export class CodeApplication extends Disposable {
 			getActiveWindowId: () => nativeHostMainService.getActiveWindowId(-1)
 		}));
 		const activeWindowRouter = new StaticRouter(ctx => activeWindowManager.getActiveClientId().then(id => ctx === id));
+		initAgenticRendererToolsAccess(mainProcessElectronServer, activeWindowRouter);
 		const urlHandlerRouter = new URLHandlerRouter(activeWindowRouter, this.logService);
 		const urlHandlerChannel = mainProcessElectronServer.getChannel('urlHandler', urlHandlerRouter);
 		urlService.registerHandler(new URLHandlerChannelClient(urlHandlerChannel));

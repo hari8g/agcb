@@ -3,6 +3,8 @@
  *--------------------------------------------------------------------------------------*/
 
 import type { JiraChatMessageUi } from './mcp/jiraWorkflowTypes.js';
+import type { ChatDecision } from './chatDecisionTypes.js';
+import type { WorkflowCompletionSummary } from './workflowSummary.js';
 
 export type ChatMessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -62,12 +64,24 @@ export interface ToolResult {
 	isError: boolean;
 }
 
+export type ActivityLineKind = 'status' | 'reasoning' | 'tool' | 'orchestrator';
+
 /** Natural-language line shown under the user’s message while the agent works */
 export interface ActivityLine {
 	id: string;
 	text: string;
 	status: 'streaming' | 'complete';
 	timestamp: number;
+	kind?: ActivityLineKind;
+}
+
+/** File the agent read or edited during an assistant turn */
+export type TouchedFileStatus = 'read' | 'preview' | 'applied' | 'rejected' | 'failed';
+
+export interface TouchedFile {
+	path: string;
+	status: TouchedFileStatus;
+	updatedAt: number;
 }
 
 export interface ChatMessage {
@@ -78,6 +92,8 @@ export interface ChatMessage {
 	state?: AssistantMessageState;
 	/** Interactive JIRA list / plan / stream embedded in chat */
 	jiraChat?: JiraChatMessageUi;
+	/** Proceed / decline (or approve / reject) — replaces "can I continue?" chat text */
+	decision?: ChatDecision;
 	/** Live narration below the paired user message */
 	activityLines?: ActivityLine[];
 	/** Raw streamed model output (not persisted long-term) */
@@ -85,6 +101,19 @@ export interface ChatMessage {
 	thinkingEvents?: ThinkingEvent[];
 	toolCalls?: ToolCall[];
 	toolResults?: ToolResult[];
+	/** Files opened or edited this turn — shown in the workflow orchestration strip */
+	touchedFiles?: TouchedFile[];
+	/** Structured end-of-run summary when the workflow completes */
+	workflowSummary?: WorkflowCompletionSummary;
+}
+
+export interface ApprovalBatchItem {
+	toolCallId: string;
+	toolName: string;
+	title: string;
+	description: string;
+	preview?: string;
+	filePath?: string;
 }
 
 export interface ApprovalRequest {
@@ -95,6 +124,12 @@ export interface ApprovalRequest {
 	preview?: string;
 	decision: ApprovalDecision;
 	createdAt: number;
+	/** Present when multiple edits are batched into one approval */
+	batchId?: string;
+	items?: ApprovalBatchItem[];
+	toolName?: string;
+	filePath?: string;
+	messageId?: string;
 }
 
 export interface Checkpoint {
@@ -102,6 +137,10 @@ export interface Checkpoint {
 	createdAt: number;
 	label: string;
 	snapshotId?: string;
+	/** Files captured in the snapshot (when known). */
+	fileCount?: number;
+	/** Workspace-relative paths in snapshot (for UI preview). */
+	paths?: string[];
 }
 
 export interface AgentRun {
@@ -128,7 +167,9 @@ export type AgentEventType =
 	| 'edit_preview_created'
 	| 'checkpoint_created'
 	| 'run_completed'
-	| 'run_failed';
+	| 'run_failed'
+	/** Main-process observability forwarded to renderer (DevTools only). */
+	| 'workflow_log';
 
 export interface AgentEvent {
 	type: AgentEventType;
@@ -159,10 +200,16 @@ export interface LiveAgentStatus {
 	detail?: string;
 	/** 0–100 when known (e.g. streaming progress estimate) */
 	progress?: number;
+	/** Current step in Intent→Classify→ContextGraph→Plan→Analyse→Impact→Execute pipeline */
+	workflowPhase?: import('./agentWorkflowOrchestration.js').AgentWorkflowPhase;
 	updatedAt: number;
 }
 
+export type { AgentWorkflowSnapshot, AgentWorkflowPhase } from './agentWorkflowOrchestration.js';
+
 export type ChatThreadStatus = 'idle' | 'running' | 'waiting_approval' | 'failed' | 'completed';
+
+export type AgentThreadRunMode = 'default' | 'plan_only' | 'execute_approved_plan';
 
 export interface ChatThread {
 	id: string;
@@ -179,5 +226,41 @@ export interface ChatThread {
 	includeActiveFile: boolean;
 	includeSelection: boolean;
 	autoApplyEdits: boolean;
+	/** After accepting a JIRA workflow plan, relax read-only JIRA/MCP gates for this thread */
+	jiraWorkflowAutonomous?: boolean;
+	/** Cursor-style plan → execute flow */
+	agentRunMode?: AgentThreadRunMode;
+	/** Composer mode: agent | plan | debug */
+	agentModeId?: import('./agentModes.js').ComposerAgentModeId;
+	activeSkillId?: string;
 	lastError?: string;
+	/** Auto-continue attempts after plan-only stall in this thread */
+	orchestratorStallRetries?: number;
+	/** Last classified developer intent for this thread run */
+	lastIntent?: AgentIntentClassificationRef;
+	/** Pre-execution workflow orchestration snapshot for the active run */
+	workflowSnapshot?: import('./agentWorkflowOrchestration.js').AgentWorkflowSnapshot;
+	/** Last run blocked write tools until plan approval (complex / plan-only) */
+	workflowExecuteGated?: boolean;
+	/** Canonical orchestration intent for active run */
+	structuredIntent?: import('./orchestration/structuredIntent.js').StructuredIntent;
+	/** Canonical run plan (preflight) */
+	workflowRunPlan?: import('./orchestration/workflowRunPlanner.js').WorkflowRunPlan;
+	/** Canonical phase track for UI */
+	canonicalPhases?: import('./orchestration/workflowPhases.js').CanonicalWorkflowPhase[];
+	/** Live canonical phase progress for orchestration strip */
+	canonicalWorkflowSnapshot?: import('./orchestration/canonicalWorkflowTracker.js').CanonicalWorkflowSnapshot;
+	/** Verification loop state for quality report + repair_once */
+	verificationState?: import('./orchestration/verificationLoop.js').VerificationState;
+	/** void-simple = minimal UI/loop; orchestrated = full workflow chrome */
+	runUiMode?: import('./voidLikeChatMode.js').AgentRunUiMode;
+}
+
+/** Avoid circular imports in types — mirror of AgentIntentClassification */
+export interface AgentIntentClassificationRef {
+	intent: string;
+	confidence: number;
+	requiresEdits: boolean;
+	requiresTools: boolean;
+	targetPaths: string[];
 }

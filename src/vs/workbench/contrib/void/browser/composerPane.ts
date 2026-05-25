@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------------------
- *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *  Composer auxiliary view — JIRA workflow (tickets, plan, run)
  *--------------------------------------------------------------------------------------*/
 
 import { Registry } from '../../../../platform/registry/common/platform.js';
@@ -22,7 +21,7 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
-import { mountComposer } from './react/out/composer-tsx/index.js';
+import { mountJiraView, _registerAgenticServices } from '../../agentic/browser/react/out/agentic-tsx/index.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { Orientation } from '../../../../base/browser/ui/sash/sash.js';
 import { toDisposable } from '../../../../base/common/lifecycle.js';
@@ -55,8 +54,12 @@ class ComposerViewPane extends ViewPane {
 		super.renderBody(parent);
 		parent.style.userSelect = 'text';
 		this.instantiationService.invokeFunction(accessor => {
-			const disposeFn = mountComposer(parent, accessor)?.dispose;
-			this._register(toDisposable(() => disposeFn?.()));
+			const agenticDisposables = _registerAgenticServices(accessor);
+			const mounted = mountJiraView(parent);
+			this._register(toDisposable(() => {
+				mounted?.dispose?.();
+				agenticDisposables.forEach(d => d.dispose());
+			}));
 		});
 	}
 
@@ -85,7 +88,7 @@ const viewsRegistry = Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry);
 viewsRegistry.registerViews([{
 	id: VOID_COMPOSER_VIEW_ID,
 	hideByDefault: false,
-	name: nls.localize2('voidComposer', 'Composer'),
+	name: nls.localize2('voidComposer', 'JIRA'),
 	ctorDescriptor: new SyncDescriptor(ComposerViewPane),
 	canToggleVisibility: true,
 	canMoveView: false,
@@ -98,7 +101,7 @@ registerAction2(class extends Action2 {
 	constructor() {
 		super({
 			id: VOID_OPEN_COMPOSER_ACTION_ID,
-			title: nls.localize2('voidOpenComposer', 'Open Agentic_MPS Composer'),
+			title: nls.localize2('voidOpenComposer', 'Open Composer (JIRA)'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyI,
 				weight: 200,

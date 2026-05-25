@@ -2,6 +2,8 @@
  *  Agentic AI — interactive JIRA workflow types
  *--------------------------------------------------------------------------------------*/
 
+import type { WorkflowCompletionSummary } from '../workflowSummary.js';
+
 export type JiraWorkflowEventLevel = 'info' | 'success' | 'warning' | 'error';
 
 export type JiraWorkflowCheckpointStage =
@@ -41,6 +43,8 @@ export interface JiraTicket {
 	updated?: string;
 	labels?: string[];
 	components?: string[];
+	/** Set when listing tickets — open tickets are actionable */
+	isOpen?: boolean;
 }
 
 export interface JiraWorkflowEvent {
@@ -75,6 +79,23 @@ export interface JiraWorkflowPlan {
 	recommendedTransitionStatus: string;
 }
 
+export type JiraExecutionFileStatus = 'opened' | 'preview' | 'applied';
+
+export interface JiraExecutionChangedFile {
+	path: string;
+	status: JiraExecutionFileStatus;
+	updatedAt: number;
+}
+
+export interface JiraWorkflowSyncResult {
+	commentAdded: boolean;
+	transitionAttempted: boolean;
+	transitionTarget?: string;
+	transitionOk: boolean;
+	refreshedStatus?: string;
+	errors: string[];
+}
+
 export interface InteractiveJiraWorkflowState {
 	phase: InteractiveWorkflowPhase;
 	openTickets: JiraTicket[];
@@ -87,13 +108,21 @@ export interface InteractiveJiraWorkflowState {
 	detailsLoading: boolean;
 	planLoading: boolean;
 	executing: boolean;
+	/** Files opened or edited during the current Run */
+	executionChangedFiles: JiraExecutionChangedFile[];
+	/** Result of JIRA comment + transition after agent run */
+	jiraSyncResult: JiraWorkflowSyncResult | null;
+	/** End-of-run intelligent agent summary from the execution thread */
+	agentExecutionSummary: WorkflowCompletionSummary | null;
+	/** Agent completed without running workspace tools */
+	agentRunStalled: boolean;
 	/** Advanced fallback: manual issue key */
 	manualIssueKey: string;
 	showAdvancedInput: boolean;
 }
 
 /** Embedded JIRA UI state on a chat assistant message */
-export type JiraChatUiMode = 'list' | 'detail' | 'executing' | 'complete' | 'declined';
+export type JiraChatUiMode = 'list' | 'detail' | 'executing' | 'complete' | 'declined' | 'stalled';
 
 export interface JiraChatMessageUi {
 	mode: JiraChatUiMode;
@@ -104,6 +133,10 @@ export interface JiraChatMessageUi {
 	events: JiraWorkflowEvent[];
 	error: string | null;
 	executing: boolean;
+	executionChangedFiles: JiraExecutionChangedFile[];
+	jiraSyncResult: JiraWorkflowSyncResult | null;
+	agentExecutionSummary: WorkflowCompletionSummary | null;
+	agentRunStalled: boolean;
 }
 
 export function createEmptyJiraChatUi(): JiraChatMessageUi {
@@ -116,6 +149,10 @@ export function createEmptyJiraChatUi(): JiraChatMessageUi {
 		events: [],
 		error: null,
 		executing: false,
+		executionChangedFiles: [],
+		jiraSyncResult: null,
+		agentExecutionSummary: null,
+		agentRunStalled: false,
 	};
 }
 
@@ -123,8 +160,10 @@ export function jiraInteractiveToChatUi(interactive: InteractiveJiraWorkflowStat
 	let mode: JiraChatUiMode = 'list';
 	if (interactive.phase === 'declined') {
 		mode = 'declined';
-	} else if (interactive.phase === 'failed') {
-		mode = 'list';
+	} else if (interactive.agentRunStalled && interactive.agentExecutionSummary) {
+		mode = 'stalled';
+	} else if (interactive.phase === 'failed' && interactive.selectedTicket) {
+		mode = 'detail';
 	} else if (interactive.phase === 'completed') {
 		mode = 'complete';
 	} else if (interactive.executing || interactive.phase === 'executing') {
@@ -141,6 +180,10 @@ export function jiraInteractiveToChatUi(interactive: InteractiveJiraWorkflowStat
 		events: interactive.events,
 		error: interactive.error,
 		executing: interactive.executing,
+		executionChangedFiles: interactive.executionChangedFiles ?? [],
+		jiraSyncResult: interactive.jiraSyncResult ?? null,
+		agentExecutionSummary: interactive.agentExecutionSummary ?? null,
+		agentRunStalled: interactive.agentRunStalled ?? false,
 	};
 }
 
@@ -157,6 +200,10 @@ export function createEmptyInteractiveState(): InteractiveJiraWorkflowState {
 		detailsLoading: false,
 		planLoading: false,
 		executing: false,
+		executionChangedFiles: [],
+		jiraSyncResult: null,
+		agentExecutionSummary: null,
+		agentRunStalled: false,
 		manualIssueKey: '',
 		showAdvancedInput: false,
 	};

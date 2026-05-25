@@ -26,13 +26,34 @@ export interface AgenticLogEvent {
 export type AgenticLogSink = (event: AgenticLogEvent) => void;
 
 let _sink: AgenticLogSink | undefined;
+const _runSinks: AgenticLogSink[] = [];
 
 export function setAgenticLogSink(sink: AgenticLogSink | undefined): void {
 	_sink = sink;
 }
 
+/** Per-run sink (e.g. forward main-process logs to renderer via IPC). */
+export function pushAgenticLogSink(sink: AgenticLogSink): { dispose(): void } {
+	_runSinks.push(sink);
+	return {
+		dispose: () => {
+			const i = _runSinks.indexOf(sink);
+			if (i >= 0) {
+				_runSinks.splice(i, 1);
+			}
+		},
+	};
+}
+
 export function agenticLog(event: AgenticLogEvent): void {
 	_sink?.(event);
+	for (const s of _runSinks) {
+		try {
+			s(event);
+		} catch {
+			// never break agent loop on logging
+		}
+	}
 }
 
 export function formatAgenticLogLine(event: AgenticLogEvent): string {

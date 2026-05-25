@@ -78,11 +78,18 @@ async function doSetupNLS(): Promise<INLSConfiguration | undefined> {
 		}
 	}
 
-	if (
-		process.env['VSCODE_DEV'] ||	// no NLS support in dev mode
-		!messagesFile					// no NLS messages file
-	) {
+	if (!messagesFile) {
 		return undefined;
+	}
+
+	// Dev normally uses unbundled sources (string localize keys). When a bundled
+	// workbench is copied from out-vscode, nls.messages.json must still be loaded.
+	if (process.env['VSCODE_DEV']) {
+		try {
+			await fs.promises.access(messagesFile);
+		} catch {
+			return undefined;
+		}
 	}
 
 	try {

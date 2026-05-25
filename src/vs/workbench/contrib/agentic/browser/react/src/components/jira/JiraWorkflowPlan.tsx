@@ -1,70 +1,78 @@
 import React from 'react';
-import type { JiraWorkflowPlan } from '../../../../../common/mcp/jiraWorkflowTypes.js';
+import type { JiraWorkflowPlan } from '../../agentic-bundle-types.js';
 
-function PlanSection(props: { title: string; children: React.ReactNode }) {
+function PlanBlock(props: { title: string; children: React.ReactNode }) {
 	return (
 		<div className="agentic-jira-plan-block">
 			<div className="agentic-jira-plan-block__title">{props.title}</div>
-			<div className="agentic-jira-plan-block__body">{props.children}</div>
+			{props.children}
 		</div>
 	);
 }
 
-function PlanList(props: { items: string[] }) {
-	if (!props.items.length) return <span className="agentic-muted">—</span>;
+function PlanList(props: { items: string[]; max?: number }) {
+	const items = props.max ? props.items.slice(0, props.max) : props.items;
+	if (!items.length) {
+		return <p className="agentic-jira-panel__muted">—</p>;
+	}
 	return (
 		<ul className="agentic-jira-plan-list">
-			{props.items.map((item, i) => (
+			{items.map((item, i) => (
 				<li key={i}>{item}</li>
 			))}
 		</ul>
 	);
 }
 
-export function JiraWorkflowPlanView(props: { plan: JiraWorkflowPlan | null; loading: boolean }) {
-	const { plan, loading } = props;
-	if (loading) {
+export function JiraWorkflowPlanView(props: {
+	plan: JiraWorkflowPlan | null;
+	loading: boolean;
+	minimal?: boolean;
+}) {
+	const { plan, loading, minimal } = props;
+	if (loading || !plan) {
+		return null;
+	}
+
+	if (minimal) {
 		return (
-			<section className="agentic-jira-section">
-				<h3>Workflow plan</h3>
-				<div className="agentic-jira-loading">Generating structured plan…</div>
-			</section>
+			<ol className="agentic-jira-panel__steps">
+				{plan.implementationSteps.slice(0, 6).map((step, i) => (
+					<li key={i}>{step}</li>
+				))}
+			</ol>
 		);
 	}
-	if (!plan) return null;
 
 	return (
 		<section className="agentic-jira-section">
-			<h3>Workflow plan</h3>
+			<h3>Plan</h3>
+			<p className="agentic-jira-plan-compact__summary">{plan.problemUnderstanding}</p>
 			<div className="agentic-jira-plan-grid">
-				<PlanSection title="Problem understanding">
-					<p>{plan.problemUnderstanding}</p>
-				</PlanSection>
-				<PlanSection title="Scope">
+				<PlanBlock title="Scope">
 					<PlanList items={plan.scope} />
-				</PlanSection>
-				<PlanSection title="Affected areas">
-					<PlanList items={plan.affectedAreas} />
-				</PlanSection>
-				<PlanSection title="Likely files">
-					<PlanList items={plan.likelyFiles} />
-				</PlanSection>
-				<PlanSection title="Commands to run">
-					<PlanList items={plan.commandsToRun} />
-				</PlanSection>
-				<PlanSection title="Risks">
-					<PlanList items={plan.risks} />
-				</PlanSection>
-				<PlanSection title="Implementation steps">
+				</PlanBlock>
+				<PlanBlock title="Likely files">
+					<PlanList items={plan.likelyFiles} max={12} />
+				</PlanBlock>
+				<PlanBlock title="Implementation steps">
 					<PlanList items={plan.implementationSteps} />
-				</PlanSection>
-				<PlanSection title="Validation criteria">
+				</PlanBlock>
+				<PlanBlock title="Commands to run">
+					<PlanList items={plan.commandsToRun} />
+				</PlanBlock>
+				{plan.risks.length > 0 && (
+					<PlanBlock title="Risks">
+						<PlanList items={plan.risks} />
+					</PlanBlock>
+				)}
+				<PlanBlock title="Validation">
 					<PlanList items={plan.validationCriteria} />
-				</PlanSection>
-				<PlanSection title="Recommended JIRA transition">
-					<span className="agentic-pill agentic-pill--accent">{plan.recommendedTransitionStatus}</span>
-				</PlanSection>
+				</PlanBlock>
 			</div>
+			<p className="agentic-jira-panel__muted">
+				Target status: <strong>{plan.recommendedTransitionStatus}</strong>
+			</p>
 		</section>
 	);
 }

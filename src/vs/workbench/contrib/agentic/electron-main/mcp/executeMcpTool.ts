@@ -6,7 +6,7 @@ import type { SerializableMcpTool } from '../../common/mcp/agenticMcpTypes.js';
 import { isMcpToolName, resolveMcpTool } from '../../common/mcp/agenticMcpTypes.js';
 import { agenticCallMcpTool } from './mcpChannelRegistry.js';
 import { agenticLog } from '../../common/agenticObservability.js';
-import { stringifyToolResult } from '../../common/toolValidation.js';
+import { coerceToolResultContent, stringifyToolResult } from '../../common/toolValidation.js';
 
 export async function executeMcpAgenticTool(
 	mcpTools: SerializableMcpTool[] | undefined,
@@ -32,7 +32,9 @@ export async function executeMcpAgenticTool(
 			toolName: tool.name,
 			params: args,
 		});
-		const text = raw.event === 'error' ? raw.text : raw.text ?? JSON.stringify(raw);
+		const text = raw.event === 'error'
+			? coerceToolResultContent(raw.text)
+			: coerceToolResultContent(raw.text ?? raw);
 		const isError = raw.event === 'error';
 		agenticLog({ kind: 'tool_call_completed', runId, toolName: name });
 		return { content: stringifyToolResult(name, text, isError), isError };

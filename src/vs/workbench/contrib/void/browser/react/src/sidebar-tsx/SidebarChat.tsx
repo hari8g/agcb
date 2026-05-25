@@ -3117,8 +3117,9 @@ export const SidebarChat = () => {
 		scrollContainerRef={scrollContainerRef}
 		className={`
 			flex flex-col
+			flex-1 min-h-0
 			px-4 py-4 space-y-4
-			w-full h-full
+			w-full
 			overflow-x-hidden
 			overflow-y-auto
 			${previousMessagesHTML.length === 0 && !displayContentSoFar ? 'hidden' : ''}
@@ -3224,7 +3225,7 @@ export const SidebarChat = () => {
 
 	const landingPageContent = <div
 		ref={sidebarRef}
-		className='w-full h-full max-h-full flex flex-col overflow-auto px-4'
+		className='w-full h-full max-h-full flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4'
 	>
 		<ErrorBoundary>
 			{landingPageInput}

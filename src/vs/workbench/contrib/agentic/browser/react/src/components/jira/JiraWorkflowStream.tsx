@@ -1,25 +1,20 @@
 import React, { useEffect, useRef } from 'react';
-import type { JiraWorkflowEvent } from '../../../../../common/mcp/jiraWorkflowTypes.js';
+import type { JiraWorkflowEvent } from '../../agentic-bundle-types.js';
 
 export function JiraWorkflowStream(props: { events: JiraWorkflowEvent[] }) {
 	const endRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		endRef.current?.scrollIntoView({ behavior: 'smooth' });
+		endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}, [props.events.length]);
 
 	if (!props.events.length) {
-		return (
-			<section className="agentic-jira-section">
-				<h3>Live stream</h3>
-				<div className="agentic-jira-empty">Workflow events will appear here step by step.</div>
-			</section>
-		);
+		return null;
 	}
 
 	return (
 		<section className="agentic-jira-section">
-			<h3>Live stream</h3>
-			<ul className="agentic-jira-timeline">
+			<h3>Workflow log</h3>
+			<ul className="agentic-jira-timeline agentic-jira-timeline--panel">
 				{props.events.map(evt => (
 					<li key={evt.id} className={`agentic-jira-timeline__item agentic-jira-timeline__item--${evt.level}`}>
 						<span className="agentic-jira-timeline__dot" />

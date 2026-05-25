@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getJiraWorkflowService, useInteractiveJiraWorkflow } from '../util/agenticServices.js';
+import { getChatService, getJiraWorkflowService, useInteractiveJiraWorkflow } from '../util/agenticServices.js';
 import { OpenTicketsList } from './jira/OpenTicketsList.js';
 import { JiraTicketDetails } from './jira/JiraTicketDetails.js';
 import { JiraWorkflowPlanView } from './jira/JiraWorkflowPlan.js';
@@ -10,6 +10,7 @@ import { WorkflowDecisionButtons } from './jira/WorkflowDecisionButtons.js';
 export function JiraWorkflowPanel() {
 	const wf = useInteractiveJiraWorkflow();
 	const jira = getJiraWorkflowService();
+	const chat = getChatService();
 	const [projectFilter, setProjectFilter] = useState('');
 
 	return (
@@ -81,7 +82,7 @@ export function JiraWorkflowPanel() {
 				planLoading={wf.planLoading}
 				executing={wf.executing}
 				phase={wf.phase}
-				onAccept={() => void jira.acceptWorkflow()}
+				onAccept={() => void chat.acceptJiraWorkflowInChat()}
 				onDecline={() => jira.declineWorkflow()}
 				onRegenerate={() => void jira.regeneratePlan()}
 			/>

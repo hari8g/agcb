@@ -4,7 +4,7 @@
 
 import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { validateToolArgs, stringifyToolResult } from '../../common/toolValidation.js';
+import { validateToolArgs, stringifyToolResult, coerceToolResultContent } from '../../common/toolValidation.js';
 import { getToolDefinition } from '../../common/toolTypes.js';
 
 suite('Agentic toolValidation', () => {
@@ -24,5 +24,11 @@ suite('Agentic toolValidation', () => {
 		const s = stringifyToolResult('grep', 'found 3 matches');
 		assert.ok(s.includes('grep'));
 		assert.ok(s.includes('found 3 matches'));
+	});
+
+	test('coerceToolResultContent stringifies objects', () => {
+		const s = coerceToolResultContent({ ok: true, lines: 3 });
+		assert.ok(s.includes('"ok": true'));
+		assert.ok(!s.includes('[object Object]'));
 	});
 });

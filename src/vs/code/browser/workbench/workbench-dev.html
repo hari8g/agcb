@@ -51,8 +51,7 @@
 		for (const cssModule of cssModules) {
 			const cssUrl = new URL(cssModule, globalThis._VSCODE_FILE_ROOT).href;
 			const jsSrc = `globalThis._VSCODE_CSS_LOAD('${cssUrl}');\n`;
-			const blob = new Blob([jsSrc], { type: 'application/javascript' });
-			importMap.imports[cssUrl] = URL.createObjectURL(blob);
+			importMap.imports[cssUrl] = `data:application/javascript,${encodeURIComponent(jsSrc)}`;
 		}
 		const importMapElement = document.createElement('script');
 		importMapElement.type = 'importmap';

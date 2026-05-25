@@ -306,12 +306,43 @@ export function findJiraGetTransitionsTool(tools: SerializableMcpTool[]): Serial
 	);
 }
 
+/** Recent window required — Atlassian MCP rejects unbounded JQL (no project/time filter). */
+export const JIRA_LIST_RECENT_DAYS = 90;
+
+/** Read optional default project from mcp.json env (e.g. ATLASSIAN_PROJECT=KAN). */
+export function inferJiraProjectKeyFromEnv(env?: Record<string, string | undefined>): string | undefined {
+	const raw = env?.['ATLASSIAN_PROJECT'] ?? env?.['JIRA_PROJECT'] ?? env?.['JIRA_PROJECT_KEY'];
+	const key = raw?.trim().toUpperCase();
+	return key && /^[A-Z][A-Z0-9]+$/.test(key) ? key : undefined;
+}
+
+function recentUpdatedClause(days = JIRA_LIST_RECENT_DAYS): string {
+	return `updated >= -${days}d`;
+}
+
+function normalizeJiraProjectKey(projectKey?: string): string | undefined {
+	const key = projectKey?.trim().toUpperCase();
+	return key && /^[A-Z][A-Z0-9]+$/.test(key) ? key : undefined;
+}
+
 /** Default JQL for open / not-done tickets. */
-export function buildOpenTicketsJql(projectKey?: string): string {
-	if (projectKey) {
-		return `project = ${projectKey} AND statusCategory != Done ORDER BY updated DESC`;
+export function buildOpenTicketsJql(projectKey?: string, recentDays = JIRA_LIST_RECENT_DAYS): string {
+	const recent = recentUpdatedClause(recentDays);
+	const project = normalizeJiraProjectKey(projectKey);
+	if (project) {
+		return `project = ${project} AND statusCategory != Done AND ${recent} ORDER BY updated DESC`;
 	}
-	return 'statusCategory != Done ORDER BY updated DESC';
+	return `statusCategory != Done AND ${recent} ORDER BY updated DESC`;
+}
+
+/** Open + closed tickets for a project (or recent issues site-wide if no project). */
+export function buildAllTicketsJql(projectKey?: string, recentDays = JIRA_LIST_RECENT_DAYS): string {
+	const recent = recentUpdatedClause(recentDays);
+	const project = normalizeJiraProjectKey(projectKey);
+	if (project) {
+		return `project = ${project} AND ${recent} ORDER BY updated DESC`;
+	}
+	return `${recent} ORDER BY updated DESC`;
 }
 
 export function buildJiraSearchParams(

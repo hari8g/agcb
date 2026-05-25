@@ -16,6 +16,8 @@ export interface CodeGraphContext {
 	referencedFiles: string[];
 	semanticMatches: { path: string; snippet: string; score: number }[];
 	astSnippets: { path: string; range: string; content: string }[];
+	/** Serialized temporal knowledge graph (when enabled) */
+	knowledgeGraphDigest?: string;
 }
 
 import type { JiraIssueContext } from './mcp/jiraTypes.js';

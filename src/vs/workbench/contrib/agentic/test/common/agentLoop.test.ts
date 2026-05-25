@@ -4,7 +4,7 @@
 
 import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { extractToolCall } from '../../common/toolCallParser.js';
+import { extractToolCall, extractAllToolCalls } from '../../common/toolCallParser.js';
 
 suite('Agentic agentLoop', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();
@@ -19,5 +19,20 @@ suite('Agentic agentLoop', () => {
 
 	test('extractToolCall returns null without fence', () => {
 		assert.strictEqual(extractToolCall('no tool here'), null);
+	});
+
+	test('extractAllToolCalls returns multiple json fences', () => {
+		const text = [
+			'```json',
+			'{"tool_call":{"name":"read_file","arguments":{"path":"a.ts"}}}',
+			'```',
+			'```json',
+			'{"tool_call":{"name":"grep","arguments":{"pattern":"foo"}}}',
+			'```',
+		].join('\n');
+		const all = extractAllToolCalls(text);
+		assert.strictEqual(all.length, 2);
+		assert.strictEqual(all[0].name, 'read_file');
+		assert.strictEqual(all[1].name, 'grep');
 	});
 });

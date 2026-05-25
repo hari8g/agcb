@@ -99,3 +99,121 @@
 .dropdown {
 	@apply bg-vscode-dropdown-bg text-vscode-dropdown-foreground border-vscode-dropdown-border focus:outline-vscode-focus-border;
 } */
+
+/* Agentic auxiliary bar — Chat | Composer | JIRA tabs */
+.void-aux-shell {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	min-width: 420px;
+	background: var(--void-bg-2);
+	color: var(--void-fg-1);
+}
+
+.void-aux-tabs {
+	display: flex;
+	flex-shrink: 0;
+	gap: 4px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--void-border-2);
+	background: color-mix(in srgb, var(--void-bg-2) 80%, var(--void-bg-3));
+}
+
+.void-aux-tabs__btn {
+	flex: 1;
+	border: 1px solid transparent;
+	background: transparent;
+	color: var(--void-fg-3);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 9px 14px;
+	cursor: pointer;
+	border-radius: 10px;
+	transition:
+		background 0.18s ease,
+		color 0.18s ease,
+		border-color 0.18s ease,
+		box-shadow 0.18s ease,
+		transform 0.1s ease;
+}
+
+.void-aux-tabs__btn:hover {
+	color: var(--void-fg-1);
+	background: color-mix(in srgb, var(--void-bg-3) 65%, transparent);
+	border-color: var(--void-border-2);
+}
+
+.void-aux-tabs__btn--active {
+	color: var(--void-fg-0);
+	background: linear-gradient(
+		165deg,
+		color-mix(in srgb, var(--void-link-color) 12%, var(--void-bg-3)),
+		var(--void-bg-3)
+	);
+	border-color: color-mix(in srgb, var(--void-link-color) 40%, var(--void-border-2));
+	box-shadow:
+		0 2px 8px color-mix(in srgb, #000 14%, transparent),
+		inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
+}
+
+.void-aux-tabs__btn--active:hover {
+	transform: none;
+}
+
+.void-aux-tab-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.void-aux-shell--chat-only {
+	min-height: 0;
+}
+
+.void-aux-shell--chat-only .void-agentic-chat-mount {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.void-aux-tab-pane {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.void-aux-tab-pane--chat,
+.void-aux-tab-pane--composer {
+	width: 100%;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.void-aux-tab-pane__mount {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.void-agentic-chat-mount {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: var(--vscode-sideBar-background);
+}

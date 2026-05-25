@@ -255,7 +255,8 @@ export class WorkbenchKeybindingService extends AbstractKeybindingService {
 			}
 
 			if (browser.isFullscreen(mainWindow)) {
-				keyboard?.lock(['Escape']);
+				// lock() rejects with InvalidStateError when not in JS-initiated fullscreen — do not log as workbench error
+				void keyboard?.lock(['Escape'])?.catch(() => { });
 			} else {
 				keyboard?.unlock();
 			}

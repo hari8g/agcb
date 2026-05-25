@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { spawn } from 'child_process';
-import { relative } from 'path';
-import { FileAccess } from '../../../base/common/network.js';
+import { join, relative } from 'path';
 import { StopWatch } from '../../../base/common/stopwatch.js';
-import { IEnvironmentService } from '../../environment/common/environment.js';
+import { INativeEnvironmentService } from '../../environment/common/environment.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { ILogService } from '../../log/common/log.js';
 
@@ -26,7 +25,7 @@ export class CSSDevelopmentService implements ICSSDevelopmentService {
 	private _cssModules?: Promise<string[]>;
 
 	constructor(
-		@IEnvironmentService private readonly envService: IEnvironmentService,
+		@INativeEnvironmentService private readonly envService: INativeEnvironmentService,
 		@ILogService private readonly logService: ILogService
 	) { }
 
@@ -51,7 +50,8 @@ export class CSSDevelopmentService implements ICSSDevelopmentService {
 
 			const chunks: string[][] = [];
 			const decoder = new TextDecoder();
-			const basePath = FileAccess.asFileUri('').fsPath;
+			// Always scan `out/` (paths must be relative to appRoot/out for renderer import maps).
+			const basePath = join(this.envService.appRoot, 'out');
 			const process = spawn(rg.rgPath, ['-g', '**/*.css', '--files', '--no-ignore', basePath], {});
 
 			process.stdout.on('data', data => {
@@ -63,7 +63,11 @@ export class CSSDevelopmentService implements ICSSDevelopmentService {
 				resolve([]);
 			});
 			process.on('close', () => {
-				const result = chunks.flat().map(path => relative(basePath, path).replace(/\\/g, '/')).filter(Boolean).sort();
+				const result = chunks.flat()
+					.map(path => relative(basePath, path).replace(/\\/g, '/'))
+					.map(path => path.replace(/^out\//, ''))
+					.filter(path => path && /\.css$/i.test(path) && !path.endsWith('/'))
+					.sort();
 				resolve(result);
 				this.logService.info(`[CSS_DEV] DONE, ${result.length} css modules (${Math.round(sw.elapsed())}ms)`);
 			});
